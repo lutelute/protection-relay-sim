@@ -3439,7 +3439,8 @@ paintExplain();
       <p><b>保護区間</b>：継電器はそれぞれ受け持つ範囲（区間）が決まっていて、境目は CT の位置になる。遮断器の両側に CT を置いて隣の区間と重ねるので、どこで事故が起きてもどれかの区間に入る（図の色の帯。この事故の主保護の区間を橙で示す）。</p>
       <p><b>主保護と後備</b>：区間の中の事故は、その区間の主保護が最初に切る。主保護や遮断器が働かないときだけ、電源側の装置が時限をおいて切る（後備）。後備が切ると停電の範囲は広くなる。</p>
       <p class="key"><b>差動は時限がいらない</b>：87L と T87 は区間の入口と出口の電流を比べるので、区間の外の事故では動かない。だから区間の中ならどこでも瞬時に切れる。過電流（51）や距離（44）は区間の外の事故も見えてしまうので、動作時間の差（右の図の階段）で順番を決める。</p>
-      <p><b>右の図の読み方</b>：横軸が事故の場所、縦軸が動作時間（対数）。場所ごとに<b>いちばん下の線が、正動作なら最初に動く装置（主保護）</b>で、その上の線が後備。線が途中で切れているところは、整定に届かず検出できない範囲。整定を変えると階段が動く。</p></div>
+      <p><b>右の図の読み方</b>：横軸が事故の場所、縦軸が動作時間（対数）。場所ごとに<b>いちばん下の線が、正動作なら最初に動く装置（主保護）</b>で、その上の線が後備。線が途中で切れているところは、整定に届かず検出できない範囲。整定を変えると階段が動く。</p>
+      <p><b>太陽光（INV）と単独運転</b>：「太陽光」を「あり」にすると、配電線 F1 の末端に INV（逆変換装置）がつながる。INV の事故電流は定格の 1.1 倍ほどで小さく、端子電圧が 20 % 未満になるとゲートブロックで電流を止める。系統から切り離されても運転を続けると、停電したはずの線路を充電したままになる（単独運転）。INV は再閉路より前に解列しなければならない一方、ほかの配電線の事故では解列してはいけない（事故時運転継続、FRT）。出力と負荷がつり合うと電圧も位相もほとんど変わらないので、能動的方式（INV が無効電力などをわずかに揺さぶり、単独運転なら周波数が動くことで見つける）が要る。変電所の線路無電圧確認装置は、線路に電圧が残っていれば再閉路しない。</p></div>
     <div class="card"><h3>計算の前提</h3><dl class="dl">
       <dt>短絡電流</dt><dd>%Z 法 <small>基準 10 MVA。上位系統 0.05+j0.5 %（短絡容量 2,000 MVA）、66 kV 送電線 20 km 0.55+j1.84 %、変圧器 66/6.6 kV・20 MVA・%Z 7.5 %（基準換算 j3.75 %）、6.6 kV 配電線 1 km あたり 4.6+j8.7 %（F1 4 km、F2 3 km）、負荷 F1 4 MW・F2 3 MW</small></dd>
       <dt>66 kV の地絡</dt><dd>抵抗接地 <small>上位変電所の中性点抵抗で約 300 A に制限。変圧器は Y−Δ としたので、6.6 kV 側に零相電圧は出ない</small></dd>
@@ -3448,6 +3449,7 @@ paintExplain();
       <dt>変圧器</dt><dd>T87・96・TP51・TS51 <small>T87 は定格の 30 % 以上かつ比率 30 % 以上で 0.03 s（CT とタップの誤差 5 %、第 2 高調波 15 % 以上で抑制）。96 は内部の大きな事故 0.15 s、層間短絡 0.4 s。TP51 は 260 A・NI・レバー 4、瞬時 1,800 A（66 kV 側）。TS51 は 2,400 A・NI</small></dd>
       <dt>配電線</dt><dd>F51・F67G・64B <small>F51 600 A・NI。F67G は V0 5 %・I0 0.2 A・前方で 0.9 s。64B は V0 15 % で 2.0 s</small></dd>
       <dt>時間</dt><dd>開極と再閉路 <small>遮断器が開くまで 66 kV と変圧器 0.05 s、配電線 0.07 s。再閉路は送電線と配電線で 1 回だけ（実際は数秒〜1 分後。画面では 2 s に縮めた）。変圧器と母線の事故では再閉路しない。継電器は瞬時復帰</small></dd>
+      <dt>太陽光（INV）</dt><dd>F1 の末端 <small>力率 1・出力一定で、電流は定格の 1.1 倍まで。端子電圧 20 % 未満でゲートブロック。連系保護は UVR 80 %・OVR 110 %（1.0 s）、OFR・UFR 61.8 Hz・57.0 Hz（1.0 s）、OVGR V0 10 %（0.5 s）。受動的方式は位相の跳躍 8° 以上で 0.1 s、跳躍は 30°×|1 − 出力／負荷| と仮定。能動的方式は、単独運転なら周波数が 1.5 Hz/s で動くとして 0.6 Hz で検出（約 0.5 s）。負荷は力率 1 なので、無効電力の不つり合いによる周波数の変化は扱わない。整定は代表例</small></dd>
     </dl></div>
   </section>
 </section>
@@ -3461,31 +3463,44 @@ $('viewSld').after($('viewGrid'));
 const WI66=10e6/(Math.sqrt(3)*66000), WI6=10e6/(Math.sqrt(3)*6600);   /* 基準電流 87.5 A / 874.8 A */
 const WZ={src:Cx(0.05,0.5), ln:Cx(0.551,1.837), tr:Cx(0.1,3.75), f:Cx(4.59,8.72)}, WLEN={ln:20, f1:4, f2:3};
 const WLOAD={E1:Cx(250,0), E2:Cx(333,0)};   /* F1 4 MW、F2 3 MW */
-const WNODES=['S','A','LF','M','T1','TI','T2','B','N1','E1','E2'];
+const WNODES=['S','A','LF','M','T1','TI','T2','B','N1','E1','N2','E2'];
 const wSp=(z,k)=>Cx(Math.max(1e-4,z.re*k), Math.max(1e-4,z.im*k));
-/* 区間の途中に節点を置き（送電線 LF、変圧器の巻線 TI、配電線 N1）、事故の位置 pos で区間を分ける */
-function wEdges(pos){ const a=pos&&pos.seg==='ln'?pos.x:0.5, b=pos&&pos.seg==='tr'?pos.x:0.5, d=pos&&pos.seg==='f1'?pos.x:WLEN.f1/2, tiny=Cx(1e-4,1e-3);
+/* 区間の途中に節点を置き（送電線 LF、変圧器の巻線 TI、配電線 N1・N2）、事故の位置 pos で区間を分ける */
+function wEdges(pos){ const a=pos&&pos.seg==='ln'?pos.x:0.5, b=pos&&pos.seg==='tr'?pos.x:0.5, d=pos&&pos.seg==='f1'?pos.x:WLEN.f1/2, d2=pos&&pos.seg==='f2'?pos.x:0.5, tiny=Cx(1e-4,1e-3);
   return [{id:'src',a:'S',b:'A',z:WZ.src}, {id:'ln1',a:'A',b:'LF',z:wSp(WZ.ln,a),cb:'52L'}, {id:'ln2',a:'LF',b:'M',z:wSp(WZ.ln,1-a)},
     {id:'tp',a:'M',b:'T1',z:tiny,cb:'52T1'}, {id:'tr1',a:'T1',b:'TI',z:wSp(WZ.tr,b)}, {id:'tr2',a:'TI',b:'T2',z:wSp(WZ.tr,1-b)}, {id:'ts',a:'T2',b:'B',z:tiny,cb:'52T2'},
-    {id:'f1a',a:'B',b:'N1',z:wSp(WZ.f,d),cb:'52F1'}, {id:'f1b',a:'N1',b:'E1',z:wSp(WZ.f,WLEN.f1-d)}, {id:'f2',a:'B',b:'E2',z:wSp(WZ.f,WLEN.f2),cb:'52F2'}]; }
-function wSolve(open, fNode, pos){ const E=wEdges(pos).filter(e=>!(e.cb&&open[e.cb])), fixed={S:Cx(1,0)}; if(fNode) fixed[fNode]=Cx(0,0);
+    {id:'f1a',a:'B',b:'N1',z:wSp(WZ.f,d),cb:'52F1'}, {id:'f1b',a:'N1',b:'E1',z:wSp(WZ.f,WLEN.f1-d)},
+    {id:'f2a',a:'B',b:'N2',z:wSp(WZ.f,d2),cb:'52F2'}, {id:'f2b',a:'N2',b:'E2',z:wSp(WZ.f,WLEN.f2-d2)}]; }
+/* 節点方程式。inj は節点へ注入する電流（太陽光の INV） */
+function wSolve(open, fNode, pos, inj){ const E=wEdges(pos).filter(e=>!(e.cb&&open[e.cb])), fixed={S:Cx(1,0)}; if(fNode) fixed[fNode]=Cx(0,0);
   const un=WNODES.filter(n=>!(n in fixed)), idx={}; un.forEach((n,i)=>idx[n]=i); const N=un.length;
   const Y=[...Array(N)].map(()=>[...Array(N+1)].map(()=>Cx(0,0))), add=(n,y)=>{ if(n in idx){ const i=idx[n]; Y[i][i]=cadd(Y[i][i],y); } };
   un.forEach(n=>add(n,Cx(1e-9,0))); Object.entries(WLOAD).forEach(([n,z])=>add(n,cdiv(Cx(100,0),z)));
   E.forEach(e=>{ const y=cdiv(Cx(100,0),e.z); [[e.a,e.b],[e.b,e.a]].forEach(([p,q])=>{ if(!(p in idx)) return; const i=idx[p]; Y[i][i]=cadd(Y[i][i],y);
     if(q in idx) Y[i][idx[q]]=csub(Y[i][idx[q]],y); else Y[i][N]=cadd(Y[i][N],cmul(y,fixed[q])); }); });
+  if(inj) Object.entries(inj).forEach(([n,J])=>{ if(n in idx) Y[idx[n]][N]=cadd(Y[idx[n]][N],J); });
   for(let c=0;c<N;c++){ let p=c; for(let r=c+1;r<N;r++) if(cabs(Y[r][c])>cabs(Y[p][c])) p=r; [Y[c],Y[p]]=[Y[p],Y[c]];
     for(let r=0;r<N;r++){ if(r===c) continue; const f=cdiv(Y[r][c],Y[c][c]); for(let k=c;k<=N;k++) Y[r][k]=csub(Y[r][k],cmul(f,Y[c][k])); } }
   const V={...fixed}; un.forEach((n,i)=>V[n]=cdiv(Y[i][N],Y[i][i]));
   const I={}; E.forEach(e=>I[e.id]=cdiv(cmul(csub(V[e.a],V[e.b]),Cx(100,0)),e.z)); return {V,I}; }
-/* 電源（上位系統）とつながっている節点 */
-function wIsland(open, pos){ const E=wEdges(pos).filter(e=>!(e.cb&&open[e.cb])), seen=new Set(['S']); let ch=true;
+/* from（既定は上位系統）とつながっている節点 */
+function wIsland(open, pos, from='S'){ const E=wEdges(pos).filter(e=>!(e.cb&&open[e.cb])), seen=new Set([from]); let ch=true;
   while(ch){ ch=false; E.forEach(e=>{ if(seen.has(e.a)&&!seen.has(e.b)){ seen.add(e.b); ch=true; } if(seen.has(e.b)&&!seen.has(e.a)){ seen.add(e.a); ch=true; } }); } return seen; }
+/* 太陽光（INV）：E1 に力率 1・出力一定（P/V）の電流を注入する。電流は定格の 1.1 倍まで。
+   端子電圧が 20 % 未満ならゲートブロック（電流を止める）し、系統の電圧が戻るまで出さない（自分では電圧を作れない） */
+function wSolveP(open, fNode, pos, P, run, Vp, gbp){ if(!run || !(P>0)) return Object.assign(wSolve(open,fNode,pos),{J:Cx(0,0),gb:false,Vi:null});
+  if(gbp){ const r0=wSolve(open,fNode,pos); if(cabs(r0.V.E1)<0.2) return Object.assign(r0,{J:Cx(0,0),gb:true,Vi:r0.V.E1}); Vp=r0.V.E1; }
+  let V=Vp&&cabs(Vp)>0.05?Vp:Cx(1,0), r=null, J=Cx(0,0), gb=false;
+  for(let k=0;k<6;k++){ gb=cabs(V)<0.2; J = gb ? Cx(0,0) : cdiv(Cx(P,0),Cx(V.re,-V.im)); const m=cabs(J), lim=1.1*P; if(m>lim) J=cmul(J,Cx(lim/m,0));
+    r=wSolve(open,fNode,pos,{E1:J}); const Vn=r.V.E1, mag=Math.sqrt(cabs(V)*cabs(Vn)), an=Math.atan2(Vn.im,Vn.re); V=Cx(mag*Math.cos(an),mag*Math.sin(an)); }
+  r.J=J; r.gb=gb; r.Vi=V; return r; }
+/* 電気が来ている節点：上位系統から（g）と、単独運転の INV から（inv） */
+function wEnergized(open, pos, invOn){ const g=wIsland(open,pos,'S'); if(!invOn || g.has('E1')) return {g, inv:null, all:g}; const inv=wIsland(open,pos,'E1'); return {g, inv, all:new Set([...g,...inv])}; }
 /* 事故点へ流れ込む電流 [A] */
 function wFaultAmp(r, f){ let s=Cx(0,0); wEdges(f.pos).forEach(e=>{ const I=r.I[e.id]; if(!I) return; if(e.b===f.node) s=cadd(s,I); if(e.a===f.node) s=csub(s,I); }); return cabs(s)*(f.v===66?WI66:WI6); }
 
 /* 配電線 F1 の図の上の道筋（ZCT の下から末端まで 4 km） */
-const WF1P=[[420,466],[420,520],[70,520]];
+const WF1P=[[420,466],[420,520],[70,520]], WF2P=[[640,466],[640,560]];
 const wF1pt = d => G.at(WF1P, G.len(WF1P)*clamp(d/WLEN.f1,0,1));
 function wSplit(pts, d){ const p=G.at(pts,d), a=[pts[0]], b=[p]; let acc=0; for(let i=1;i<pts.length;i++){ const l=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); if(acc+l<d) a.push(pts[i]); else b.push(pts[i]); acc+=l; } a.push(p); return [a,b]; }
 /* 事故点。cx は右の図の横軸の位置、lx・ly は名前を書く位置 */
@@ -3495,9 +3510,10 @@ const WFP={
   Tr:{label:'変圧器の内部', node:'TI', pos:{seg:'tr',x:0.5}, x:740, y:236, v:66, cx:0.48, lx:722, ly:266, al:'right'},
   B:{label:'6.6 kV 母線', node:'B', x:590, y:372, v:6, cx:0.565, lx:600, ly:350},
   Fn:{label:'配電線 F1（変電所から 0.3 km）', node:'N1', pos:{seg:'f1',x:0.3}, x:420, y:496, v:6, tmp:true, cx:0.63, lx:402, ly:496, al:'right'},
-  Ff:{label:'配電線 F1 の末端（4 km）', node:'E1', x:80, y:520, v:6, tmp:true, cx:1.0, lx:96, ly:498, al:'left'},
+  Ff:{label:'配電線 F1 の末端（4 km）', node:'E1', x:80, y:520, v:6, tmp:true, cx:1.0, lx:96, ly:540, al:'left'},
+  Gn:{label:'配電線 F2（変電所から 0.5 km）', node:'N2', pos:{seg:'f2',x:0.5}, x:640, y:482, v:6, tmp:true, cx:0.65, lx:656, ly:482, al:'left'},
 };
-const wOK=(k,kind)=> kind==='lg' ? k!=='Tr' : (kind==='turn'||kind==='inrush') ? k==='Tr' : true;
+const wOK=(k,kind)=> kind==='lg' ? k!=='Tr' : (kind==='turn'||kind==='inrush') ? k==='Tr' : kind==='open' ? (k==='Fn'||k==='Ff') : true;
 
 /* 継電器。s＝短絡系の事故で見せる、g＝地絡で見せる（87L は両方） */
 const WROWS=[
@@ -3511,12 +3527,18 @@ const WROWS=[
   {id:'b64', name:'64B 母線の地絡過電圧', ab:'OVG', no:'64B', g:1},
   {id:'f1oc', name:'F51 配電線 F1', ab:'OCR', no:'F51', s:1},
   {id:'f1dg', name:'F67G 配電線 F1', ab:'DG', no:'F67G', g:1},
-  {id:'f2oc', name:'F51 配電線 F2（健全）', ab:'OCR', no:'F51', s:1},
-  {id:'f2dg', name:'F67G 配電線 F2（健全）', ab:'DG', no:'F67G', g:1},
+  {id:'f2oc', name:'F51 配電線 F2', ab:'OCR', no:'F51', s:1},
+  {id:'f2dg', name:'F67G 配電線 F2', ab:'DG', no:'F67G', g:1},
+  {id:'i27', name:'INV：UVR（不足電圧）', inv:1},
+  {id:'i59', name:'INV：OVR（過電圧）', inv:1},
+  {id:'i95', name:'INV：OFR・UFR（周波数）', inv:1},
+  {id:'i64', name:'INV：OVGR（地絡過電圧）', inv:1},
+  {id:'ipas', name:'INV：単独運転検出（受動的）', inv:1},
+  {id:'iact', name:'INV：単独運転検出（能動的）', inv:1},
 ];
-const wNm = id => WROWS.find(r=>r.id===id).name;
-const WTRIP={l87:['52L','52T1'], z44:['52L'], g67:['52L'], t87:['52T1','52T2'], b96:['52T1','52T2'], tp51:['52T1','52T2'], ts51:['52T2'], b64:['52T2'], f1oc:['52F1'], f1dg:['52F1'], f2oc:['52F2'], f2dg:['52F2']};
-const WCB={'52L':{brk:0.05, nm:'52L（送電線）'}, '52T1':{brk:0.05, nm:'52T1（変圧器の一次）'}, '52T2':{brk:0.05, nm:'52T2（変圧器の二次）'}, '52F1':{brk:0.07, nm:'52F1（配電線 F1）'}, '52F2':{brk:0.07, nm:'52F2（配電線 F2）'}};
+const wNm = id => id==='inv' ? '太陽光（INV）の連系保護' : WROWS.find(r=>r.id===id).name;
+const WTRIP={l87:['52L','52T1'], z44:['52L'], g67:['52L'], t87:['52T1','52T2'], b96:['52T1','52T2'], tp51:['52T1','52T2'], ts51:['52T2'], b64:['52T2'], f1oc:['52F1'], f1dg:['52F1'], f2oc:['52F2'], f2dg:['52F2'], i27:['52P'], i59:['52P'], i95:['52P'], i64:['52P'], ipas:['52P'], iact:['52P']};
+const WCB={'52L':{brk:0.05, nm:'52L（送電線）'}, '52T1':{brk:0.05, nm:'52T1（変圧器の一次）'}, '52T2':{brk:0.05, nm:'52T2（変圧器の二次）'}, '52F1':{brk:0.07, nm:'52F1（配電線 F1）'}, '52F2':{brk:0.07, nm:'52F2（配電線 F2）'}, '52P':{brk:0.05, nm:'52P（太陽光の連系用）'}};
 /* 再閉路するまとまり：送電線の継電器が開けた遮断器と、配電線の遮断器。変圧器と母線の事故では再閉路しない */
 const WRC={L:{rel:['l87','z44','g67'], cbs:['52L','52T1'], nm:'送電線'}, F1:{rel:['f1oc','f1dg'], cbs:['52F1'], nm:'配電線 F1'}, F2:{rel:['f2oc','f2dg'], cbs:['52F2'], nm:'配電線 F2'}};
 /* 整定 */
@@ -3526,30 +3548,33 @@ const WTP={tap:260, lever:4, inst:1800}, WTS={tap:2400}, WF={tap:600};
 const WGF={ig66:300, v0f:5, i0f:0.2, tf:0.9, v0b:15, tb:2.0, t67:0.5, icF1:3.0, icF2:4.0, icB:0.5, ir:0.4, E:6600/Math.sqrt(3)};
 const WINR={pk:16, tau:0.4, h2:0.30, close2:1.0};   /* 励磁突入：一次側で定格の 8 倍（16 pu）から時定数 0.4 s で減る。第 2 高調波 30 % */
 
-/* 事故の状態（地絡・層間短絡・励磁突入）。te は事故からの時刻 */
-function wFaultX(open, on, te, Q){ const f=WFP[Q.loc], live=wIsland(open,f.pos), X={};
+/* 事故の状態（地絡・層間短絡・励磁突入）。te は事故からの時刻、ener は電気が来ている節点 */
+function wFaultX(open, on, te, Q, ener){ const f=WFP[Q.loc], X={}; ener=ener||wEnergized(open,f.pos,Q.inv==='on');
   if(Q.kind==='inrush'){ if(!open['52T1']) X.inr={I:WINR.pk*Math.exp(-te/WINR.tau), h2:WINR.h2}; return X; }
-  if(!on) return X;
-  if(Q.kind==='turn'){ if(live.has('TI')){ X.turn=true; X.b96=true; } return X; }
-  if(Q.kind==='3p'){ if(Q.loc==='Tr' && live.has('TI')) X.b96=true; return X; }
-  if(!live.has(f.node)) return X;
+  if(!on || Q.kind==='open') return X;
+  if(Q.kind==='turn'){ if(ener.g.has('TI')){ X.turn=true; X.b96=true; } return X; }
+  if(Q.kind==='3p'){ if(Q.loc==='Tr' && ener.g.has('TI')) X.b96=true; return X; }
+  /* 地絡：事故点に電気が来ているまとまり（上位系統か、INV の単独運転） */
+  const isl = ener.g.has(f.node) ? ener.g : ener.inv && ener.inv.has(f.node) ? ener.inv : null; if(!isl) return X;
   if(f.v===66){ X.lg66=true; return X; }
   /* 6.6 kV（非接地）：V0 は地絡抵抗と対地アドミタンスの分圧。事故の配電線の ZCT には、ほかの配電線・母線の充電電流と GPT の抵抗分が事故点へ向かって流れる */
-  const c1=!open['52F1'], c2=!open['52F2'], IC=WGF.icB+(c1?WGF.icF1:0)+(c2?WGF.icF2:0), k=Q.rg*1000/WGF.E, v0=1/Math.hypot(1+k*WGF.ir, k*IC); X.V0=v0*100;
-  if(f.node==='B'){ X.I01=c1?v0*WGF.icF1:0; X.fw1=false; X.I02=c2?v0*WGF.icF2:0; X.fw2=false; }
-  else { X.I01=v0*Math.hypot(WGF.ir, IC-WGF.icF1); X.fw1=true; X.I02=c2?v0*WGF.icF2:0; X.fw2=false; }
+  const hB=isl.has('B'), h1=isl.has('E1'), h2=isl.has('E2'), IC=(hB?WGF.icB:0)+(h1?WGF.icF1:0)+(h2?WGF.icF2:0), G0=hB?WGF.ir:0, k=Q.rg*1000/WGF.E, v0=1/Math.hypot(1+k*G0, k*IC);
+  if(hB) X.V0=v0*100; if(h1) X.V0i=v0*100;
+  const fd = f.node==='N1'||f.node==='E1' ? 1 : f.node==='N2'||f.node==='E2' ? 2 : 0;
+  if(hB && h1 && !open['52F1']){ X.I01 = fd===1 ? v0*Math.hypot(G0,IC-WGF.icF1) : v0*WGF.icF1; X.fw1 = fd===1; }
+  if(hB && h2 && !open['52F2']){ X.I02 = fd===2 ? v0*Math.hypot(G0,IC-WGF.icF2) : v0*WGF.icF2; X.fw2 = fd===2; }
   return X; }
 /* 励磁突入電流を一次側の電流に足す（遅れの電流として） */
 function wAddInr(r, X){ if(!X.inr) return; const j=Cx(0,-X.inr.I); ['src','ln1','ln2','tp','tr1'].forEach(id=>{ if(r.I[id]) r.I[id]=cadd(r.I[id],j); }); }
 /* 各継電器の要素 [{k,on,t}] と表示する値 v、整定 set、使えない理由 off */
 function wMeasure(r, X, Q){ const I=r.I, z=Cx(0,0), A66=v=>cabs(v)*WI66, A6=v=>cabs(v)*WI6, M={};
-  const Iln=I.ln1||z, Itp=I.tp||z, Its=I.ts||z, If1=I.f1a||z, If2=I.f2||z;
+  const Iln=I.ln1||z, Itp=I.tp||z, Its=I.ts||z, If1=I.f1a||z, If2=I.f2a||z;
   /* 87L：両端の電流（区間へ入る向き）の和が差電流 */
   let Id=A66(csub(Iln,Itp)); const Ir=(A66(Iln)+A66(Itp))/2; if(X.lg66) Id=Math.max(Id,WGF.ig66);
   M.l87={v:'差 '+ampStr(Id), set:'100 A', why: Id<W87.min && Ir>W87.min ? '入る電流と出る電流が等しい（区間の外の事故）' : '', off:Q.fail==='l87'?'伝送路の異常で使えない':'', els:[{k:'',on:Q.fail!=='l87' && Id>=W87.min && Id>=W87.k*Ir, t:0.03}]};
   /* 44S：上位変電所から見たインピーダンス V/I（%） */
   const Zm = cabs(Iln)>0.05 ? cabs(cdiv(r.V.A,Iln))*100 : Infinity;
-  M.z44={v:Number.isFinite(Zm)?'Z '+Zm.toFixed(2)+' %':'Z —', set:`第 3 段 ${WZR.z3.toFixed(2)} %`, els:[['第1段','z1'],['第2段','z2'],['第3段','z3']].map(([k,s])=>({k,on:Zm<=WZR[s],t:WZT[s]}))};
+  M.z44={v:Number.isFinite(Zm)?'Z '+Zm.toFixed(Zm<10?2:0)+' %':'Z —', set:`第 3 段 ${WZR.z3.toFixed(2)} %`, els:[['第1段','z1'],['第2段','z2'],['第3段','z3']].map(([k,s])=>({k,on:Zm<=WZR[s],t:WZT[s]}))};
   M.g67={v:ampStr(X.lg66?WGF.ig66:0), set:'', els:[{k:'',on:!!X.lg66,t:WGF.t67}]};
   /* T87：一次と二次の電流の差（定格に対する %）。CT とタップの誤差 5 % を入れ、通過電流に比例した分は比率で抑える */
   let Idt=cabs(csub(cmul(Itp,Cx(1+WT87.err,0)),Its)); const Irt=(cabs(Itp)+cabs(Its))/2; if(X.turn) Idt+=0.3;
@@ -3564,59 +3589,93 @@ function wMeasure(r, X, Q){ const I=r.I, z=Cx(0,0), A66=v=>cabs(v)*WI66, A6=v=>c
   M.f2oc={v:ampStr(a2), set:'600 A', els:[{k:'',on:a2>WF.tap,t:SI(a2/WF.tap,2,'NI')}]};
   const dg=(i0,fw)=>({v:`I0 ${(i0||0).toFixed(2)} A${i0>0?(fw?' 前向き':' 逆向き'):''}`, set:'V0 5 %・I0 0.2 A・前向き', els:[{k:'',on:(X.V0||0)>=WGF.v0f && (i0||0)>=WGF.i0f && !!fw, t:WGF.tf}]});
   M.f1dg=dg(X.I01,X.fw1); M.f2dg=dg(X.I02,X.fw2);
+  /* 太陽光（INV）の連系保護。iv は INV の状態（run 運転中、V 端子電圧、f 周波数、isl 単独運転、th 位相の跳躍） */
+  const iv=X.inv||{}, irun=!!iv.run, Vp=iv.V||0, fq=iv.f||60;
+  M.i27={v:irun?`${(Vp*100).toFixed(0)} %`:'—', set:'80 %', els:[{k:'',on:irun && Vp<0.8, t:1.0}]};
+  M.i59={v:irun?`${(Vp*100).toFixed(0)} %`:'—', set:'110 %', els:[{k:'',on:irun && Vp>1.1, t:1.0}]};
+  M.i95={v:irun?`${fq.toFixed(2)} Hz`:'—', set:'57.0〜61.8 Hz', els:[{k:'',on:irun && (fq>61.8||fq<57.0), t:1.0}]};
+  M.i64={v:irun?`V0 ${(iv.V0||0).toFixed(0)} %`:'—', set:'V0 10 %', off:Q.ipro==='pasng'?'付けていない':'', els:[{k:'',on:irun && Q.ipro!=='pasng' && (iv.V0||0)>=10, t:0.5}]};
+  M.ipas={v:irun&&iv.isl?`跳躍 ${iv.th.toFixed(0)}°`:'—', set:'8°', els:[{k:'',on:irun && !!iv.isl && !iv.gb && iv.th>=8, t:0.1}]};
+  M.iact={v:irun&&iv.isl?`Δf ${iv.df.toFixed(2)} Hz`:'—', set:'0.6 Hz', off:Q.ipro==='full'?'':'付けていない', els:[{k:'',on:irun && Q.ipro==='full' && !!iv.isl && Math.abs(iv.df||0)>=0.6, t:0.1}]};
   return M; }
 
 /* ===== シミュレーション（5 ms 刻み） ===== */
-const WQ0={loc:'Ln', kind:'3p', pers:'tmp', fail:'none', h2:true, fl:2, tsl:3, rg:0};
+const WQ0={loc:'Ln', kind:'3p', pers:'tmp', fail:'none', h2:true, fl:2, tsl:3, rg:0, inv:'off', ppv:4, ipro:'full', ldc:true};
 let WQ={...WQ0}, WS=null, wFull=[], wFocus=null, wPaused=false, wHold=0, wAcc=0, wSpeed=0.2, wRoles={};
-const WPOS={'52L':[150,96], '52T1':[740,150], '52T2':[740,318], '52F1':[420,398], '52F2':[640,398],
+const WPOS={'52L':[150,96], '52T1':[740,150], '52T2':[740,318], '52F1':[420,398], '52F2':[640,398], '52P':[70,496], inv:[150,462],
   l87:[58,158], z44:[126,158], g67:[194,158], tp51:[820,150], t87:[820,196], b96:[820,242], ts51:[820,296], b64:[330,446], f1oc:[510,398], f1dg:[510,442], f2oc:[730,398], f2dg:[730,442]};
+WROWS.forEach(r=>{ if(r.inv) WPOS[r.id]=WPOS.inv; });
+/* 単独運転にかかわる危険（数が大きいほど重い） */
+const WHZR={isl:1, ldc:2, ns:3}, WHZT={isl:'太陽光（INV）が単独運転を続けている。停電したはずの配電線が充電されたまま（作業者の感電や、再閉路での非同期投入のおそれ）。',
+  ldc:'再閉路のときに INV がまだ運転していた。線路無電圧確認装置が再閉路を止めたので非同期投入は避けたが、配電線 F1 の停電が長引く。',
+  ns:'INV が運転したまま再閉路した（非同期投入）。位相のずれた電源どうしがつながり、機器を傷めるおそれがある。'};
+function wHz(k){ if(!WS.hz || WHZR[k]>WHZR[WS.hz]) WS.hz=k; }
 function wNew(){ const d={}; WROWS.forEach(r=>d[r.id]={prog:0,pick:false,tripped:false,tTrip:null,tOpen:null,el:{},elem:null,top:null,v:'',status:'待機'});
-  return {t:0, ev:false, te:0, on:false, open:{}, opening:{}, by:{}, dev:d, rc:{}, log:[], trips:[], ever:new Set(), r:null, X:{}, M:null}; }
+  return {t:0, ev:false, te:0, on:false, open:{}, opening:{}, by:{}, dev:d, rc:{}, log:[], trips:[], ever:new Set(), r:null, X:{}, M:null, invRun:false, isl:null, hz:null, vinv:null, gb:false}; }
 function wLog(s, cls='', at=null){ const e={t:WS.ev?WS.te:null, ta:WS.t, s, cls, at}; WS.log.push(e); const i=WS.log.length-1; if(wFull[i] && wFull[i].s!==s) wFull.length=i; wFull[i]=e; }
 function wOpen(cb, who){ if(WS.open[cb]||WS.opening[cb]) return;
   if(cb==='52F1' && WQ.fail==='cbf1'){ if(!WS.cbFail){ WS.cbFail=true; wLog('52F1 が開かない（遮断器の故障）。事故電流が流れ続ける','bad',WPOS['52F1']); } return; }
   WS.opening[cb]={at:WS.t+WCB[cb].brk, who}; }
-function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev; S_.t+=dt; if(S_.ev) S_.te+=dt;
+function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.ppv/10:0; S_.t+=dt; if(S_.ev) S_.te+=dt;
   /* 遮断器の開極。送電線・配電線の継電器が開けたら、再閉路の準備（2 回目はロックアウト） */
-  Object.entries(S_.opening).forEach(([cb,o])=>{ if(!o || S_.t<o.at) return; S_.open[cb]=true; S_.opening[cb]=null; S_.by[cb]=o.who; if(D[o.who] && D[o.who].tOpen==null) D[o.who].tOpen=S_.te;
+  Object.entries(S_.opening).forEach(([cb,o])=>{ if(!o || S_.t<o.at) return; S_.open[cb]=true; S_.opening[cb]=null; S_.by[cb]=o.who; if(D[o.who] && D[o.who].tOpen==null) D[o.who].tOpen=S_.te; if(cb==='52P') S_.invRun=false;
     wLog(`${WCB[cb].nm} が開いた`,'cb',WPOS[cb]);
     Object.values(WRC).forEach(rc=>{ if(rc.cbs[0]!==cb || !rc.rel.includes(o.who)) return; const st=S_.rc[rc.nm]=S_.rc[rc.nm]||{n:0};
       if(st.n>=1){ st.lock=true; wLog(`${rc.nm}は再閉路しても事故が残っていた → ロックアウト（長時間の停電）`,'bad',WPOS[cb]); } else st.t=S_.t; }); });
-  /* 再閉路（1 回だけ） */
+  /* 再閉路（1 回だけ）。INV が単独運転で線路を充電していたら、線路無電圧確認装置が止める（なければ非同期投入） */
   Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(!st || st.t==null || st.n>0 || S_.t-st.t<RECLOSE) return;
-    rc.cbs.forEach(cb=>{ if(S_.open[cb] && rc.rel.includes(S_.by[cb])) S_.open[cb]=false; }); st.n=1; st.t=null; st.tRe=S_.t;
-    wLog(`${rc.nm}を再閉路（実際は数秒〜1 分後。ここでは ${RECLOSE} s に縮めた）`,'cb',WPOS[rc.cbs[0]]);
+    const cbs=rc.cbs.filter(cb=>S_.open[cb] && rc.rel.includes(S_.by[cb])), ivLive=!!S_.isl && !S_.gb && S_.invRun && !S_.open['52P'], ivn=ivLive?wIsland(S_.open,f.pos,'E1'):null;
+    const hit = ivLive && cbs.some(cb=>{ const e=wEdges(f.pos).find(x=>x.cb===cb); return ivn.has(e.a)||ivn.has(e.b); });
+    if(hit && rc.nm==='配電線 F1' && Q.ldc){ st.t=null; st.lock=true; wHz('ldc'); wLog('線路無電圧確認装置：配電線 F1 に電圧が残っている（INV の単独運転）ので、再閉路しない。F1 の停電が長引く','bad',WPOS['52F1']); return; }
+    cbs.forEach(cb=>{ S_.open[cb]=false; }); st.n=1; st.t=null; st.tRe=S_.t;
+    wLog(`${rc.nm}を再閉路${Q.inv==='on'&&Q.ldc&&rc.nm==='配電線 F1'?'（線路が無電圧であることを確かめてから）':''}（実際は数秒〜1 分後。ここでは ${RECLOSE} s に縮めた）`,'cb',WPOS[rc.cbs[0]]);
+    if(hit){ wHz('ns'); wLog('INV が運転したまま再閉路した（非同期投入）。位相のずれた電源どうしがつながり、大きな電流が流れる','bad',WPOS.inv); S_.open['52P']=true; S_.invRun=false; wLog('INV が過電流で止まり、52P が開いた','cb',WPOS['52P']); }
     rc.rel.forEach(id=>Object.assign(D[id],{tripped:false,prog:0,el:{},pick:false,status:'待機',tTrip:null,tOpen:null})); });
   /* 励磁突入のシナリオ：突入電流が収まったら二次側を入れる */
   if(S_.ev && Q.kind==='inrush' && !S_.closed2 && S_.te>=WINR.close2){ S_.closed2=true; if(!S_.open['52T1']){ S_.open['52T2']=false; wLog('突入電流が収まったので 52T2 を入れて送電を始めた','cb',WPOS['52T2']); } }
-  const f=WFP[Q.loc], live=wIsland(S_.open,f.pos);
-  /* 一時的な事故（送電線・配電線）は、事故点が無電圧になるとアークが消える */
-  if(S_.on && Q.pers==='tmp' && f.tmp && (Q.kind==='3p'||Q.kind==='lg') && !live.has(f.node)){ S_.on=false; wLog('事故点が無電圧になってアークが消えた（一時的な事故）','reset',[f.x,f.y]); }
-  const r=wSolve(S_.open, S_.on && Q.kind==='3p' && live.has(f.node) ? f.node : null, f.pos), X=wFaultX(S_.open, S_.on, S_.te, Q); wAddInr(r,X);
+  /* 潮流と事故電流（INV があれば E1 に電流を注入する） */
+  const run=S_.invRun && !S_.open['52P'], r=wSolveP(S_.open, S_.on && Q.kind==='3p' ? f.node : null, f.pos, P, run, S_.vinv, S_.gb);
+  if(S_.ev && run && !!r.gb!==S_.gb) wLog(r.gb?'INV：端子電圧が 20 % 未満になったので、出力を一時停止（ゲートブロック）':'INV：電圧が戻ったので出力を再開（運転継続、FRT）','reset',WPOS.inv);
+  S_.vinv=r.Vi; S_.gb=!!r.gb;
+  const ener=wEnergized(S_.open, f.pos, run && !r.gb);
+  /* 一時的な事故（送電線・配電線）は、事故点に電気が来なくなるとアークが消える */
+  if(S_.on && Q.pers==='tmp' && f.tmp && (Q.kind==='3p'||Q.kind==='lg') && !ener.all.has(f.node)){ S_.on=false; wLog('事故点が無電圧になってアークが消えた（一時的な事故）','reset',[f.x,f.y]); }
+  const X=wFaultX(S_.open, S_.on, S_.te, Q, ener); wAddInr(r,X);
+  /* INV の単独運転：系統から切り離されても運転を続けている */
+  const isl = run && !ener.g.has('E1');
+  if(isl && !S_.isl){ const nd=wIsland(S_.open,f.pos,'E1'), Pl=(nd.has('E1')?0.4:0)+(nd.has('E2')?0.3:0), rr=Pl>0?P/Pl:9, th=Math.min(90,30*Math.abs(1-rr));
+    S_.isl={t0:S_.te, r:rr, th, Pl};
+    if(S_.ev && !r.gb) wLog(`系統から切り離された。INV だけで${nd.has('E2')?'6.6 kV 母線と配電線 F1・F2':'配電線 F1'}をつないでいる（単独運転。出力 ${Q.ppv} MW ／ 負荷 ${(Pl*10).toFixed(0)} MW、位相の跳躍 ${th.toFixed(0)}°）`,'pick',WPOS.inv); }
+  if(!isl) S_.isl=null;
+  const df = isl && !r.gb && Q.ipro==='full' ? 1.5*(S_.te-S_.isl.t0) : 0;
+  X.inv={run, V:run?cabs(r.V.E1):0, f:60+df, df, isl, th:isl?S_.isl.th:0, gb:!!r.gb, V0:X.V0i||0};
+  if(S_.ev && isl && !r.gb && S_.te-S_.isl.t0>1.5 && !S_.hzIsl){ S_.hzIsl=true; wHz('isl'); wLog('単独運転が 1.5 s 続いている。停電したはずの配電線が INV で充電されたまま','bad',WPOS.inv); }
   const M=wMeasure(r,X,Q); S_.r=r; S_.X=X; S_.M=M;
   if(S_.ev && M.t87.blk && !S_.blkLog){ S_.blkLog=true; wLog(`T87 の差電流は大きいが、第 2 高調波が ${(X.inr.h2*100).toFixed(0)} %（15 % 以上）なので励磁突入と見て止める`,'reset',WPOS.t87); }
   /* 要素ごとにタイマを進め、どれかが満了したら動作（OR）。復帰は瞬時 */
   WROWS.forEach(({id})=>{ const d=D[id], m=M[id]; d.v=m.v; if(d.tripped) return; let best=null;
     m.els.forEach(e=>{ if(e.on && S_.ev){ d.el[e.k]=(d.el[e.k]||0)+dt/Math.max(1e-3,e.t); const rem=(1-d.el[e.k])*e.t; if(!best||rem<best.rem) best={k:e.k,t:e.t,p:d.el[e.k],rem}; } else d.el[e.k]=0; });
     if(best){ d.prog=Math.min(1,best.p); d.top=best.t; d.elem=best.k;
-      if(!d.pick){ d.pick=true; d.status='検出中'; S_.ever.add(id); wLog(`${wNm(id)} が検出${best.k?'（'+best.k+'）':''}`,'pick',WPOS[id]); }
-      if(best.p>=1){ d.tripped=true; d.tTrip=S_.te; d.status='動作'; S_.trips.push({id,te:S_.te}); wLog(`${wNm(id)} が動作（${best.k?best.k+'、':''}${S_.te.toFixed(3)} s）`,'trip',WPOS[id]); WTRIP[id].forEach(cb=>wOpen(cb,id)); } }
+      if(!d.pick){ d.pick=true; d.status='検出中'; S_.ever.add(id); if(id[0]==='i') S_.ever.add('inv'); wLog(`${wNm(id)} が検出${best.k?'（'+best.k+'）':''}`,'pick',WPOS[id]); }
+      if(best.p>=1){ d.tripped=true; d.tTrip=S_.te; d.status='動作'; S_.trips.push({id,te:S_.te}); if(id[0]==='i' && !S_.trips.some(t=>t.id==='inv')) S_.trips.push({id:'inv',te:S_.te});
+        wLog(`${wNm(id)} が動作（${best.k?best.k+'、':''}${S_.te.toFixed(3)} s）`,'trip',WPOS[id]); WTRIP[id].forEach(cb=>wOpen(cb,id)); } }
     else if(d.pick){ d.pick=false; d.prog=0; d.status='復帰'; wLog(`${wNm(id)} は復帰`,'reset',WPOS[id]); } });
   Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.tRe!=null && !st.ok && !st.lock && S_.t-st.tRe>0.4 && !rc.rel.some(id=>D[id].pick)){ st.ok=true; wLog(`${rc.nm}の再閉路に成功して復電した`,'cb',WPOS[rc.cbs[0]]); } }); }
-function wReset(keep){ WS=wNew(); if(WQ.kind==='inrush'){ WS.open['52T1']=true; WS.open['52T2']=true; } for(let i=0;i<20;i++) wStep(DT); WS.log=[]; wHold=0; wFocus=null; if(!keep) wFull=[]; }
+function wReset(keep){ WS=wNew(); if(WQ.kind==='inrush'){ WS.open['52T1']=true; WS.open['52T2']=true; } WS.invRun = WQ.inv==='on' && wIsland(WS.open,null,'S').has('E1');
+  for(let i=0;i<20;i++) wStep(DT); WS.log=[]; wHold=0; wFocus=null; if(!keep) wFull=[]; }
 function wFire(){ if(WS.ev) wReset(); const Q=WQ, f=WFP[Q.loc]; WS.ev=true; WS.te=0; WS.on=true;
+  if(Q.kind==='open'){ WS.on=false; WS.opening['52F1']={at:WS.t+WCB['52F1'].brk, who:'manual'}; wLog('作業のため 52F1 を開く（事故ではない）。配電線 F1 は停電するはず','ev',WPOS['52F1']); return; }
   if(Q.kind==='inrush'){ WS.open['52T1']=false; wLog('52T1 を入れて変圧器を充電する（52T2 は開いたまま）。これは事故ではない','ev',WPOS['52T1']); return; }
   if(Q.kind==='turn'){ wLog('変圧器の巻線で層間短絡（数ターンだけの短絡）','ev',[f.x,f.y]); wLog('端子から見た電流の差は定格の 15 %。T87 の最小動作値 30 % に届かない','reset',WPOS.t87); return; }
   if(Q.kind==='lg'){ if(f.v===66) wLog(`${f.label}で一線地絡（66 kV は抵抗接地なので、地絡電流は約 ${WGF.ig66} A）`,'ev',[f.x,f.y]);
     else { const X=wFaultX(WS.open,true,0,Q); wLog(`${f.label}で一線地絡（非接地なので地絡電流は数 A。地絡抵抗 ${Q.rg} kΩ で V0 は ${(X.V0||0).toFixed(0)} %）`,'ev',[f.x,f.y]); } return; }
-  wLog(`${f.label}で三相短絡（事故電流 ${ampStr(wFaultAmp(wSolve(WS.open,f.node,f.pos),f))}・${f.v===66?'66 kV':'6.6 kV'} 側）`,'ev',[f.x,f.y]); }
+  const P=Q.inv==='on'?Q.ppv/10:0; wLog(`${f.label}で三相短絡（事故電流 ${ampStr(wFaultAmp(wSolveP(WS.open,f.node,f.pos,P,WS.invRun,null,false),f))}・${f.v===66?'66 kV':'6.6 kV'} 側）`,'ev',[f.x,f.y]); }
 /* 経過の i 番目の出来事の時刻へ飛ぶ。同じ条件で最初から計算し直して、その時刻で止める */
 function wJump(i){ const e=wFull[i]; if(!e) return; const te=e.t==null?0:e.t, keep=wFull; wReset(true); wFull=keep; wFire(); while(WS.te<te-DT/2) wStep(DT); wPaused=true; wHold=0; wFocus=i; }
 function wTogglePlay(){ if(wHold>0){ wHold=0; return; } wPaused=!wPaused; if(!wPaused) wFocus=null; }
 
 /* ===== 正動作なら（場所と種類ごとの期待） ===== */
-function wExpect(){ const L=WQ.loc, k=WQ.kind, E={main:[],sub:[],back:[],no:[],area:'',why:''};
+function wExpect0(){ const L=WQ.loc, k=WQ.kind, E={main:[],sub:[],back:[],no:[],area:'',why:''};
   if(k==='inrush') return Object.assign(E,{no:['t87','tp51'], area:'なし（停電しない）',
     why:'変圧器を入れた瞬間は鉄心の磁束が偏り、定格の数倍〜10 倍の励磁突入電流が一次側だけに流れる。差動から見ると「入るのに出てこない」電流なので、内部事故と区別がつかない。突入電流は第 2 高調波を多く含む（15 % 以上）ので、それを見て T87 を止める（抑制）。TP51 の瞬時要素も突入電流より上に整定しておく。'});
   if(k==='turn') return Object.assign(E,{main:['b96'], area:'配電用変電所から先すべて（変圧器が 1 台なので）',
@@ -3626,6 +3685,8 @@ function wExpect(){ const L=WQ.loc, k=WQ.kind, E={main:[],sub:[],back:[],no:[],a
       why:'66 kV は中性点を抵抗で接地しているので、地絡電流は数百 A 流れる（ここでは 300 A）。87L は両端の電流の差でこれを見て、瞬時に両端を切る。67G（地絡方向）は零相電圧と零相電流の向きで見る後備。'});
     if(L==='B') return Object.assign(E,{main:['b64'], no:['f1dg','f2dg'], area:'6.6 kV 母線から先すべて',
       why:'非接地の 6.6 kV で母線が地絡すると、どの配電線の ZCT にも自分の充電電流が逆向き（母線へ向かう）に流れるだけなので、F67G はどれも動かない（動いてはいけない）。母線の GPT で V0 を見る 64B が、時限をおいて 52T2 を切る。'});
+    if(L==='Gn') return Object.assign(E,{main:['f2dg'], back:['b64'], no:['f1dg'], area:'配電線 F2 だけ（再閉路で戻る）',
+      why:'事故の配電線 F2 の ZCT には、ほかの配電線と母線の充電電流、GPT の抵抗分が事故点へ向かって流れる（前向き）。事故のない F1 の ZCT には自分の充電電流が逆向きに流れる。F67G は向きを見て F2 だけを切る。64B は後備。'});
     return Object.assign(E,{main:['f1dg'], back:['b64'], no:['f2dg'], area:'配電線 F1 だけ（再閉路で戻る）',
       why:'事故の配電線 F1 の ZCT には、ほかの配電線と母線の充電電流、GPT の抵抗分が事故点へ向かって流れる（前向き）。健全な F2 の ZCT には自分の充電電流が逆向きに流れる。F67G は V0 と I0 の向きを見て、事故の配電線だけを選んで切る。64B は後備。地絡抵抗が大きいと V0 が小さくなり、整定に届かなくなる。'}); }
   const T={
@@ -3634,13 +3695,35 @@ function wExpect(){ const L=WQ.loc, k=WQ.kind, E={main:[],sub:[],back:[],no:[],a
     Tr:{main:['t87'], sub:['b96','tp51'], back:['z44'], no:['l87'], area:'配電用変電所から先すべて（変圧器の事故なので再閉路しない）', why:'変圧器の区間は T87（比率差動）が一次と二次の電流の差で瞬時に見る。96 も油の流れで動き、TP51 の瞬時要素も一次側の大きな事故電流で動く。44S の第 3 段（2.0 s）が遠くからの後備。87L は区間の外（電流が通り抜けるだけ）なので動いてはいけない。'},
     B:{main:['ts51'], back:['tp51','z44'], no:['t87','l87'], area:'6.6 kV 母線から先すべて（再閉路しない）', why:'配電用変電所の 6.6 kV 母線には差動の母線保護を付けないことが多く、変圧器二次の TS51 が母線の主保護になる。配電線の F51 より遅く整定するので、母線の事故は切るまでに時間がかかる。T87 は区間の外の事故なので、一次と二次の電流がつり合って動かない（タップや CT の誤差による差電流は比率で抑える）。'},
     Fn:{main:['f1oc'], back:['ts51','tp51'], no:['f2oc','t87'], area:'配電線 F1 だけ（再閉路で戻る）', why:'配電線の事故は F51 が切り、再閉路する。TS51・TP51 も同じ電流を見るが、時限を長くして配電線の F51 を待つ（後備）。健全な配電線 F2 の F51 は事故電流を見ないので動かない。'},
+    Gn:{main:['f2oc'], back:['ts51','tp51'], no:['f1oc','t87'], area:'配電線 F2 だけ（再閉路で戻る）', why:'配電線 F2 の事故は F2 の F51 が切り、再閉路する。TS51・TP51 は後備。事故のない F1 の F51 は動いてはいけない。'},
     Ff:{main:['f1oc'], back:['ts51','tp51'], no:['f2oc','t87'], area:'配電線 F1 だけ（再閉路で戻る）', why:'末端の事故は電流が小さいので、F51 も遅くなる。TS51 の整定（2.4 kA）には届かず、後備が届かない範囲がある（右の図で TS51 の線が途中で切れている）。配電線の末端を後備まで含めて守るには、配電線の途中に区分用の保護（自動区分開閉器など）を置く。'}}[L];
   return Object.assign(E,T); }
-function wExpTime(id){ const Q=WQ, f=WFP[Q.loc], open=Q.kind==='inrush'?{'52T2':true}:{}; const r=wSolve(open, Q.kind==='3p'?f.node:null, f.pos), X=wFaultX(open,true,0,Q); wAddInr(r,X);
+function wExpTime(id){ const Q=WQ, f=WFP[Q.loc];
+  if(id==='inv'){ const s=wInvSim(); if(s.t!=null) return `${WINVN[s.who]} → ${secStr(s.t)}${s.tIsl!=null&&s.tIsl<s.t?`（切り離されてから ${secStr(s.t-s.tIsl)}）`:''}`;
+    if(Q.loc==='Gn' && Q.kind==='3p') return `電圧は最低 ${(s.minV*100).toFixed(0)} % まで下がるが、UVR の時限（1.0 s）より早く戻るので運転を続ける`;
+    return '検出できない（単独運転が続く）'; }
+  const open=Q.kind==='inrush'?{'52T2':true}:{}; const r=wSolveP(open, Q.kind==='3p'?f.node:null, f.pos, Q.inv==='on'?Q.ppv/10:0, Q.inv==='on'&&Q.kind!=='inrush', null, false), X=wFaultX(open,true,0,Q); wAddInr(r,X);
   const m=wMeasure(r,X,Q)[id]; if(m.off) return m.off; if(m.blk) return `${m.v}：第 2 高調波で抑制（動かない）`;
   if(Q.kind==='inrush' && id==='tp51') return `最大 ${m.v}：瞬時 1,800 A に届かず、限時は電流がすぐ減るので満了しない`;
   const on=m.els.filter(e=>e.on); if(!on.length && m.why) return `${m.v}：${m.why}`; if(!on.length) return `${m.v}${m.set?`：整定 ${m.set} に届かず検出しない`:'：検出しない'}`;
   const e=on.reduce((a,b)=>a.t<b.t?a:b); return `${m.v} → ${e.k?e.k+' ':''}${secStr(e.t)}`; }
+/* 太陽光（INV）があるときの期待を足す */
+function wExpect(){ const L=WQ.loc, k=WQ.kind, inv=WQ.inv==='on';
+  if(k==='open') return inv ? {main:['inv'],sub:[],back:[],no:[], area:'配電線 F1（作業のため）',
+      why:'作業のために 52F1 を開くと、配電線 F1 は停電するはず。ところが太陽光（INV）が運転を続けると、F1 の負荷に電気を送り続ける（単独運転）。作業者の感電や、再閉路での非同期投入につながるので、INV は単独運転を見つけて止まらなければならない。出力と負荷がつり合うと、電圧も周波数もほとんど変わらず、電圧・周波数の継電器や受動的方式では見えない（不感帯）。能動的方式は、INV が無効電力などをわずかに揺さぶり、系統につながっていれば何も起きないが、単独運転なら周波数が動くことを使って見つける。'}
+    : {main:[],sub:[],back:[],no:[], area:'配電線 F1（作業のため）', why:'太陽光がなければ、52F1 を開けば F1 は停電する。保護継電器の出番はない。'};
+  const E=wExpect0(); if(!inv || k==='inrush') return E;
+  if(L==='Gn'){ if(k==='3p'){ E.no=[...E.no,'inv']; E.why+=' 太陽光（INV）は F1 につながっているので、F2 の事故で解列してはいけない（事故時運転継続、FRT）。電圧が下がっても、UVR の時限（1.0 s）より早く事故が除かれれば運転を続ける。INV の電流は F1 の F51 を逆向きに流れるが、定格の 1.1 倍ほどなので整定に届かない。'; }
+    else E.why+=' INV の OVGR は V0 で動くので、ほかの配電線の地絡でも解列する（V0 だけでは、どの配電線の地絡か分からない）。'; return E; }
+  E.sub=[...(E.sub||[]),'inv']; E.why+=' 太陽光（INV）は、系統から切り離されたら再閉路（2 s 後）より前に解列しなければならない（単独運転の防止）。'; return E; }
+/* INV がどうやって解列するかは、同じ条件で裏で計算してみて決める */
+function wInvSim(){ const keep={WS,wFull,wFocus,wHold}, res={minV:9};
+  try{ wFull=[]; wReset(); wFire(); let tIsl=null;
+    while(WS.te<4){ wStep(DT); const iv=WS.X.inv; if(iv && iv.run) res.minV=Math.min(res.minV,iv.V); if(WS.isl && !WS.gb && tIsl==null) tIsl=WS.isl.t0;
+      const t=WS.trips.find(x=>x.id[0]==='i' && x.id!=='inv'); if(t){ res.t=t.te; res.who=t.id; break; } }
+    res.tIsl=tIsl; } finally { WS=keep.WS; wFull=keep.wFull; wFocus=keep.wFocus; wHold=keep.wHold; }
+  return res; }
+const WINVN={i27:'UVR（電圧低下）', i59:'OVR（電圧上昇）', i95:'OFR・UFR（周波数）', i64:'OVGR（V0）', ipas:'受動的方式（位相の跳躍）', iact:'能動的方式（周波数を揺さぶる）'};
 let wExpKey='', wExpCache=null;
 
 /* ===== 描画 ===== */
@@ -3649,17 +3732,19 @@ const wC=setup($('wsld'),880,600), wChC=setup($('wchart'),480,400);
 const WZONE={ l87:{r:[[180,84,572,24],[728,84,24,100]], lab:'87L の区間', lx:560, ly:122},
   t87:{r:[[726,114,28,240]], lab:'T87 の区間', lx:706, ly:128, al:'right'},
   bus:{r:[[292,360,520,24]], lab:'TS51 の区間（母線）', lx:440, ly:352, al:'left'},
-  f1:{r:[[407,412,26,120],[58,506,375,28]], lab:'F51・F67G の区間（F1）', lx:250, ly:548} };
-const WHZ={Ln:'l87',Lf:'l87',Tr:'t87',B:'bus',Fn:'f1',Ff:'f1'};
+  f1:{r:[[407,412,26,120],[58,506,375,28]], lab:'F51・F67G の区間（F1）', lx:300, ly:548},
+  f2:{r:[[627,412,26,152]], lab:'F51・F67G の区間（F2）', lx:668, ly:548, al:'left'} };
+const WHZ={Ln:'l87',Lf:'l87',Tr:'t87',B:'bus',Fn:'f1',Ff:'f1',Gn:'f2'};
 const W66=new Set(['src','ln1','ln2','tp','tr1']);
 /* 電流の値を書く位置 [x, y, 揃え] */
 const WLBL={ ln1:p=>{ const m=G.at(p,G.len(p)/2); return [m[0],m[1]-10,'center']; }, ln2:p=>[(p[0][0]+740)/2,86,'center'], tp:()=>[730,206,'right'], ts:()=>[730,272,'right'],
-  f1a:()=>[428,386,'left'], f1b:p=>{ const m=G.at(p,G.len(p)/2); return [m[0],m[1]-10,'center']; }, f2:()=>[648,386,'left'] };
+  f1a:()=>[428,386,'left'], f1b:p=>{ const m=G.at(p,G.len(p)/2); return [m[0],m[1]-10,'center']; }, f2a:()=>[648,386,'left'] };
 function drawW(){ const c=wC, g=G, keep=G.c; G.c=c; c.clearRect(0,0,880,600); c.fillStyle=C.sunk; c.fillRect(0,0,880,600);
-  const Q=WQ, S_=WS, r=S_.r, X=S_.X||{}, f=WFP[Q.loc], live=wIsland(S_.open,f.pos), al=(a,b)=>live.has(a)&&live.has(b), lg=Q.kind==='lg';
+  const Q=WQ, S_=WS, r=S_.r, X=S_.X||{}, iv=X.inv||{}, f=WFP[Q.loc], lg=Q.kind==='lg', op=Q.kind==='open';
+  const ivRun=Q.inv==='on' && S_.invRun && !S_.open['52P'], ener=wEnergized(S_.open,f.pos,ivRun && !S_.gb), live=ener.all, al=(a,b)=>live.has(a)&&live.has(b);
   wRoles=expRoles(wExpect());
   /* 区間の帯 */
-  const hz=(Q.kind==='inrush')?null:WHZ[Q.loc];
+  const hz=(Q.kind==='inrush'||op)?null:WHZ[Q.loc];
   Object.entries(WZONE).forEach(([k,z])=>{ const on=k===hz; c.save(); c.fillStyle=on?rgba(C.target,0.14):rgba(C.muted,0.08); c.strokeStyle=on?rgba(C.target,0.75):rgba(C.muted,0.4); c.setLineDash(on?[]:[4,4]); c.lineWidth=1.2;
     z.r.forEach(([x,y,w,h])=>{ c.fillRect(x,y,w,h); c.strokeRect(x,y,w,h); }); c.restore(); g.text(z.lx,z.ly,z.lab,{al:z.al||'center',col:on?C.target:C.muted,font:`${on?700:600} 10px ${SANS}`}); });
   /* 上位変電所と送電線 */
@@ -3678,49 +3763,62 @@ function drawW(){ const c=wC, g=G, keep=G.c; G.c=c; c.clearRect(0,0,880,600); c.
   g.bus(300,372,800,372, live.has('B')); g.text(304,358,'6.6 kV 母線',{al:'left',col:C.muted,font:`600 11px ${SANS}`}); g.vt(330,372,'GPT',true);
   /* 配電線 F1・F2 */
   const d1 = f.pos&&f.pos.seg==='f1' ? f.pos.x : WLEN.f1/2, [p1,p2]=wSplit(WF1P, G.len(WF1P)*d1/WLEN.f1);
+  const d2 = f.pos&&f.pos.seg==='f2' ? f.pos.x : 0.5, [q1,q2]=wSplit(WF2P, G.len(WF2P)*d2/WLEN.f2);
   g.feed([[420,372],[420,466]], al('B','N1')); g.feed(p1, al('B','N1')); g.feed(p2, al('N1','E1')); g.feed([[70,520],[70,532]], live.has('E1')); g.load(70,532,'需要家（F1 の末端）', live.has('E1'));
-  g.text(250,508,'配電線 F1 4 km',{col:C.muted,font:`600 10px ${SANS}`});
+  g.text(300,508,'配電線 F1 4 km',{col:C.muted,font:`600 10px ${SANS}`});
   g.cb(420,398,S_.open['52F1']?1:0,'52F1',true); g.ct(420,424,'CT',true); g.zct(420,446,'',true);
-  g.feed([[640,372],[640,532]], al('B','E2')); g.load(640,532,'需要家（F2）', live.has('E2')); g.text(652,490,'配電線 F2 3 km（健全）',{al:'left',col:C.muted,font:`600 10px ${SANS}`});
+  g.feed([[640,372],[640,466]], al('B','N2')); g.feed(q1, al('B','N2')); g.feed(q2, al('N2','E2')); g.load(640,560,'需要家（F2）', live.has('E2')); g.text(652,520,'配電線 F2 3 km',{al:'left',col:C.muted,font:`600 10px ${SANS}`});
   g.cb(640,398,S_.open['52F2']?1:0,'52F2',true); g.ct(640,424,'CT',true); g.zct(640,446,'',true);
+  /* 太陽光（INV）。F1 の末端につながる */
+  c.save(); if(Q.inv!=='on') c.globalAlpha=0.3; g.feed([[70,474],[70,520]], ivRun && live.has('E1')); g.cb(70,496,S_.open['52P']?1:0,'52P',true);
+  c.fillStyle=C.surface; c.strokeStyle=ivRun?C.ink:C.muted; c.lineWidth=2; c.fillRect(46,440,48,28); c.strokeRect(46,440,48,28); c.restore();
+  g.text(70,454,'INV',{font:`700 12px ${MONO}`,col:ivRun?C.ink:C.muted}); g.text(70,428,Q.inv==='on'?`太陽光 ${Q.ppv} MW`:'太陽光（なし）',{font:`600 10px ${SANS}`,col:C.muted});
+  /* 電流の通り道 */
+  const ep={src:[[69,96],[104,96]], ln1:[[104,96],[LFx,96]], ln2:[[LFx,96],[740,96],[740,138]], tp:[[740,138],[740,212]], tr1:[[740,212],[740,236]], tr2:[[740,236],[740,260]],
+    ts:[[740,260],[740,372]], f1a:[[420,372],[420,466],...p1.slice(1)], f1b:p2, f2a:[[640,372],[640,466],...q1.slice(1)], f2b:q2};
+  /* 単独運転：INV だけで電気が来ている部分を琥珀色で示す */
+  if(ener.inv){ const ed=wEdges(f.pos); Object.entries(ep).forEach(([id,pts])=>{ const e=ed.find(x=>x.id===id); if(e && ener.inv.has(e.a) && ener.inv.has(e.b) && !(e.cb&&S_.open[e.cb])) g.line(pts,C.amber,3.5); }); g.line([[70,474],[70,520]],C.amber,3.5); }
   /* 電流の粒（6.6 kV 換算の大きさ）。大きな電流は赤 */
-  if(r){ const ep={src:[[69,96],[104,96]], ln1:[[104,96],[LFx,96]], ln2:[[LFx,96],[740,96],[740,138]], tp:[[740,138],[740,212]], tr1:[[740,212],[740,236]], tr2:[[740,236],[740,260]],
-      ts:[[740,260],[740,372]], f1a:[[420,372],[420,466],...p1.slice(1)], f1b:p2, f2:[[640,372],[640,532]]};
-    const ed=wEdges(f.pos); Object.entries(ep).forEach(([id,pts])=>{ const I=r.I[id]; if(!I) return; const e=ed.find(x=>x.id===id), pu=cabs(I), dir=cabs(r.V[e.a]||Cx(0))>=cabs(r.V[e.b]||Cx(0))?1:-1, big=pu>2;
+  if(r){ const ed=wEdges(f.pos); Object.entries(ep).forEach(([id,pts])=>{ const I=r.I[id]; if(!I) return; const e=ed.find(x=>x.id===id), pu=cabs(I), dir=cabs(r.V[e.a]||Cx(0))>=cabs(r.V[e.b]||Cx(0))?1:-1, big=pu>2;
       g.flow('w'+id, dir>0?pts:[...pts].reverse(), flowMag(pu*WI6), big?C.fault:C.live);
-      if(S_.ev && pu>1.5 && WLBL[id]){ const A=pu*(W66.has(id)?WI66:WI6), q=WLBL[id](pts); g.text(q[0],q[1],ampStr(A),{al:q[2],col:big?C.fault:C.ink,font:`700 11px ${MONO}`}); } }); }
+      if(S_.ev && pu>1.5 && WLBL[id]){ const A=pu*(W66.has(id)?WI66:WI6), q=WLBL[id](pts); g.text(q[0],q[1],ampStr(A),{al:q[2],col:big?C.fault:C.ink,font:`700 11px ${MONO}`}); } });
+    if(r.J && cabs(r.J)>0.005) g.flow('winv',[[70,474],[70,520]], flowMag(cabs(r.J)*WI6), C.live); }
   /* 地絡の V0・I0、励磁突入 */
-  if(lg && S_.ev && X.V0>0){ g.text(436,458,`I0 ${(X.I01||0).toFixed(2)} A${X.fw1?'（前向き）':'（逆向き）'}`,{al:'left',col:X.fw1?C.fault:C.amber,font:`700 10px ${MONO}`}); g.text(656,458,`I0 ${(X.I02||0).toFixed(2)} A（逆向き）`,{al:'left',col:C.amber,font:`700 10px ${MONO}`}); g.text(350,416,`V0 ${X.V0.toFixed(0)} %`,{al:'left',col:C.fault,font:`700 11px ${MONO}`}); }
+  if(lg && S_.ev && X.V0>0){ if(X.I01!=null) g.text(436,458,`I0 ${X.I01.toFixed(2)} A${X.fw1?'（前向き）':'（逆向き）'}`,{al:'left',col:X.fw1?C.fault:C.amber,font:`700 10px ${MONO}`});
+    if(X.I02!=null) g.text(656,458,`I0 ${X.I02.toFixed(2)} A${X.fw2?'（前向き）':'（逆向き）'}`,{al:'left',col:X.fw2?C.fault:C.amber,font:`700 10px ${MONO}`}); g.text(350,416,`V0 ${X.V0.toFixed(0)} %`,{al:'left',col:C.fault,font:`700 11px ${MONO}`}); }
   if(lg && S_.ev && X.lg66) g.text(LFx, 118, '地絡電流 約 300 A（中性点抵抗で制限）',{col:C.fault,font:`700 10px ${SANS}`});
   if(X.inr && X.inr.I>0.3) g.text(722,282,`励磁突入 ${ampStr(X.inr.I*WI66)}（第 2 高調波 ${(X.inr.h2*100).toFixed(0)} %）`,{al:'right',col:C.amber,font:`700 10px ${SANS}`});
   /* 事故点の候補と事故 */
-  Object.entries(WFP).forEach(([k,p])=>{ const sel=k===Q.loc, ok=wOK(k,Q.kind); c.save(); c.globalAlpha=ok?1:0.3; c.strokeStyle=sel?C.target:C.muted; c.setLineDash(sel?[]:[3,3]); c.lineWidth=sel?2:1.2; c.beginPath(); c.arc(p.x,p.y,11,0,TAU); c.stroke(); c.restore(); });
-  const fOn = S_.ev && ((Q.kind==='3p' && S_.on && live.has(f.node)) || (lg && (X.V0>0||X.lg66)) || (Q.kind==='turn' && X.turn));
-  if(Q.kind!=='inrush') g.fault(f.x,f.y,fOn,lg);
-  const lab = Q.kind==='inrush' ? '変圧器を充電' : Q.kind==='turn' ? '変圧器の層間短絡' : f.label;
-  g.text(f.lx,f.ly,lab,{al:f.al||'center',col:S_.ev?C.fault:C.muted,font:`700 10px ${SANS}`});
+  if(!op) Object.entries(WFP).forEach(([k,p])=>{ const sel=k===Q.loc, ok=wOK(k,Q.kind); c.save(); c.globalAlpha=ok?1:0.3; c.strokeStyle=sel?C.target:C.muted; c.setLineDash(sel?[]:[3,3]); c.lineWidth=sel?2:1.2; c.beginPath(); c.arc(p.x,p.y,11,0,TAU); c.stroke(); c.restore(); });
+  const fOn = S_.ev && ((Q.kind==='3p' && S_.on && live.has(f.node)) || (lg && (X.V0>0||X.lg66||X.V0i>0)) || (Q.kind==='turn' && X.turn));
+  if(Q.kind!=='inrush' && !op) g.fault(f.x,f.y,fOn,lg);
+  if(op) g.text(402,478,'作業停電：52F1 を開く',{al:'right',col:S_.ev?C.target:C.muted,font:`700 10px ${SANS}`});
+  else { const lab = Q.kind==='inrush' ? '変圧器を充電' : Q.kind==='turn' ? '変圧器の層間短絡' : f.label; g.text(f.lx,f.ly,lab,{al:f.al||'center',col:S_.ev?C.fault:C.muted,font:`700 10px ${SANS}`}); }
   /* 継電器 */
   const D=S_.dev, show=rw=> lg ? !rw.s : !rw.g;
-  WROWS.forEach(rw=>{ const p=WPOS[rw.id], d=D[rw.id], st={pick:d.pick&&!d.tripped, tripped:d.tripped, flag:d.tripped?1:0}; c.save(); if(!show(rw)) c.globalAlpha=0.3; g.relay(p[0],p[1],rw.ab,rw.no,st,62);
+  WROWS.forEach(rw=>{ if(rw.inv) return; const p=WPOS[rw.id], d=D[rw.id], st={pick:d.pick&&!d.tripped, tripped:d.tripped, flag:d.tripped?1:0}; c.save(); if(!show(rw)) c.globalAlpha=0.3; g.relay(p[0],p[1],rw.ab,rw.no,st,62);
     if(rw.id==='l87') g.relay(668,176,rw.ab,'87L',st,62); c.restore(); if(show(rw)){ roleMark(g,p[0],p[1],wRoles[rw.id]); if(rw.id==='l87') roleMark(g,668,176,wRoles[rw.id]); } });
+  if(Q.inv==='on'){ const ids=WROWS.filter(w=>w.inv).map(w=>w.id), pk=ids.some(id=>D[id].pick&&!D[id].tripped), tr=ids.some(id=>D[id].tripped);
+    g.relay(150,462,'INV','連系保護',{pick:pk,tripped:tr,flag:tr?1:0},62); roleMark(g,150,462,wRoles.inv);
+    if(iv.isl && !iv.gb) g.tag(150,500,`単独運転 ${(iv.V*100).toFixed(0)} %・${iv.f.toFixed(2)} Hz`,C.amber); else if(ivRun && iv.gb) g.tag(150,500,'ゲートブロック中',C.muted); }
   if(wPaused) g.tag(40,16,'一時停止',C.target);
   const L=wFocus!=null ? wFull[wFocus] : S_.log[S_.log.length-1]; if(OPT.cap && L && L.at && (wFocus!=null || S_.t-L.ta<0.6+(wHold>0?9:0))) g.callout(L.at[0],L.at[1],L.s,1,wHold>0?wHold/BEAT:0);
   G.c=keep; }
 
 /* ===== 右の図：事故の場所と動作時間（三相短絡）。場所ごとにいちばん下の線が主保護 ===== */
 const WSTAIR=['l87','z44','t87','b96','tp51','ts51','f1oc'];
-const WSN={l87:'87L', z44:'44S', t87:'T87', b96:'96', tp51:'TP51', ts51:'TS51', f1oc:'F51（F1）'};
+const WSN={l87:'87L', z44:'44S', t87:'T87', b96:'96', tp51:'TP51', ts51:'TS51', f1oc:'F51（F1）', f2oc:'F51（F2）'};
 const wStCol=()=>({l87:C.s1, z44:C.s2, t87:C.ok, b96:C.muted, tp51:C.ink, ts51:C.amber, f1oc:C.target});
 let wStKey='', wSt=null;
-function wStairCalc(){ const Q=WQ, key=[Q.fl,Q.tsl,Q.fail].join('|'); if(key===wStKey) return wSt; wStKey=key; const pts=[];
-  const add=(cx,node,pos,tr)=>{ const M=wMeasure(wSolve({},node,pos),{b96:!!tr},Q), t={}; WSTAIR.forEach(id=>{ const on=M[id].els.filter(e=>e.on); t[id]=on.length?Math.min(...on.map(e=>e.t)):Infinity; }); pts.push({cx,t}); };
+function wStairCalc(){ const Q=WQ, key=[Q.fl,Q.tsl,Q.fail,Q.inv,Q.ppv].join('|'); if(key===wStKey) return wSt; wStKey=key; const pts=[], P=Q.inv==='on'?Q.ppv/10:0;
+  const add=(cx,node,pos,tr)=>{ const M=wMeasure(wSolveP({},node,pos,P,P>0,null,false),{b96:!!tr},Q), t={}; WSTAIR.forEach(id=>{ const on=M[id].els.filter(e=>e.on); t[id]=on.length?Math.min(...on.map(e=>e.t)):Infinity; }); pts.push({cx,t}); };
   for(let i=0;i<=40;i++){ const u=0.01+0.98*i/40; add(u*0.40,'LF',{seg:'ln',x:u}); }
   for(let i=0;i<=10;i++){ const u=0.02+0.96*i/10; add(0.43+u*0.10,'TI',{seg:'tr',x:u},true); }
   add(0.565,'B',null);
   for(let i=0;i<=40;i++){ const d=0.02+3.98*i/40; add(0.60+0.40*d/WLEN.f1,'N1',{seg:'f1',x:d}); }
   return (wSt=pts); }
 function drawWChart(){ const c=wChC; c.clearRect(0,0,480,400); const Q=WQ;
-  if(Q.kind==='lg') return wChartGround(c); if(Q.kind==='inrush') return wChartInrush(c);
+  if(Q.kind==='lg') return wChartGround(c); if(Q.kind==='inrush') return wChartInrush(c); if(Q.kind==='open') return wChartIsl(c);
   $('wctitle').textContent='場所と動作時間（三相短絡）'; $('wcsub').textContent='いちばん下の線＝主保護';
   const b={x:50,y:30,w:416,h:270}, pts=wStairCalc(), col=wStCol(), f=WFP[Q.loc], S_=WS, D=S_.dev;
   const X=v=>b.x+v*b.w, Y=t=>b.y+b.h-(Math.log10(clamp(t,0.01,10))+2)/3*b.h;
@@ -3743,18 +3841,19 @@ function drawWChart(){ const c=wChC; c.clearRect(0,0,480,400); const Q=WQ;
   c.restore();
   if(S_.ev && S_.te>0.01 && S_.te<10 && Q.kind==='3p') H.text(c,b.x+b.w-4,Y(S_.te)+(S_.te>3?10:-8),`事故から ${S_.te.toFixed(2)} s`,{al:'right',col:C.fault,font:`700 10px ${MONO}`});
   /* 事故の場所での各装置の動作時間（点）。いちばん早いものが最初に動く */
-  if(Q.kind==='3p'){ const M=wMeasure(wSolve({},f.node,f.pos),{b96:Q.loc==='Tr'},Q); let best=null;
-    WSTAIR.forEach(id=>{ const on=M[id].els.filter(e=>e.on); if(!on.length) return; const t=Math.min(...on.map(e=>e.t)); if(t>10) return; if(!best||t<best.t) best={id,t};
+  if(Q.kind==='3p'){ const P=Q.inv==='on'?Q.ppv/10:0, M=wMeasure(wSolveP({},f.node,f.pos,P,P>0,null,false),{b96:Q.loc==='Tr'},Q); let best=null; col.f2oc=C.live;
+    (Q.loc==='Gn'?[...WSTAIR,'f2oc']:WSTAIR).forEach(id=>{ const on=M[id].els.filter(e=>e.on); if(!on.length) return; const t=Math.min(...on.map(e=>e.t)); if(t>10) return; if(!best||t<best.t) best={id,t};
       const d=D[id]; H.dot(c,fx,Y(t), d.tripped?C.target:col[id], d.tripped?6:4.5, d.pick&&!d.tripped); });
     if(best){ const lf=f.cx>0.45; H.text(c, fx+(lf?-10:10), Y(best.t)+(best.t<0.05?-12:12), `正動作なら最初に動く：${WSN[best.id]} ${secStr(best.t)}`,{al:lf?'right':'left',col:C.ink,font:`700 11px ${SANS}`}); } }
   else H.text(c,b.x+b.w/2,b.y+16,'層間短絡は差電流が小さく、この図（三相短絡）とは別。T87 は届かず、96 が 0.4 s で動く',{col:C.fault,font:`700 10px ${SANS}`});
+  if(Q.loc==='Gn') H.text(c,b.x+b.w-4,b.y+12,'F2 の事故：線は F1 のもの、点は F2 の F51（レバー 2）',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
   /* 凡例 */
   let lx=b.x, ly=b.y+b.h+56; c.save(); c.font=`700 11px ${SANS}`; WSTAIR.forEach(id=>{ const w=c.measureText(WSN[id]).width+30; if(lx+w>b.x+b.w){ lx=b.x; ly+=18; }
     c.strokeStyle=col[id]; c.lineWidth=2.4; c.setLineDash(id==='b96'?[5,3]:id==='z44'?[7,3]:[]); c.beginPath(); c.moveTo(lx,ly); c.lineTo(lx+18,ly); c.stroke(); c.setLineDash([]); c.fillStyle=C.ink; c.textAlign='left'; c.textBaseline='middle'; c.fillText(WSN[id],lx+22,ly); lx+=w; }); c.restore(); }
 /* 地絡：時限の階段と V0 */
 function wChartGround(c){ const Q=WQ, f=WFP[Q.loc], S_=WS, D=S_.dev, X0=S_.ev?S_.X:wFaultX({},true,0,Q);
   $('wctitle').textContent='地絡保護の時限協調'; $('wcsub').textContent=f.v===66?'66 kV・抵抗接地':'6.6 kV・非接地';
-  const rows = f.v===66 ? [['l87','87L（電流差動）',0.03,C.s1],['g67','67G（地絡方向）',WGF.t67,C.s2]] : [['f1dg','F67G（F1）',WGF.tf,C.target],['f2dg','F67G（F2・健全）',WGF.tf,C.muted],['b64','64B（母線の V0）',WGF.tb,C.amber]];
+  const rows = f.v===66 ? [['l87','87L（電流差動）',0.03,C.s1],['g67','67G（地絡方向）',WGF.t67,C.s2]] : [['f1dg','F67G（F1）',WGF.tf,C.target],['f2dg','F67G（F2）',WGF.tf,C.live],['b64','64B（母線の V0）',WGF.tb,C.amber]];
   const x0=150, w=300, X=t=>x0+t/2.4*w; c.save(); c.strokeStyle=rgba(C.muted,0.25); c.font=`500 10px ${MONO}`; c.fillStyle=C.muted; c.textAlign='center';
   [0,0.4,0.8,1.2,1.6,2.0,2.4].forEach(t=>{ c.beginPath(); c.moveTo(X(t),44); c.lineTo(X(t),56+rows.length*56); c.stroke(); c.fillText(t.toFixed(1)+' s',X(t),66+rows.length*56); }); c.restore();
   rows.forEach(([id,nm,top,col],i)=>{ const d=D[id], y=54+i*56, role=wRoles[id]; H.text(c,x0-10,y+12,nm,{al:'right',font:`600 12px ${SANS}`}); if(role) H.text(c,x0-10,y+30,ROLE[role][0],{al:'right',col:{main:C.target,back:C.muted,no:C.fault,sub:C.live}[role],font:`700 10px ${SANS}`});
@@ -3767,7 +3866,7 @@ function wChartGround(c){ const Q=WQ, f=WFP[Q.loc], S_=WS, D=S_.dev, X0=S_.ev?S_
     c.save(); c.fillStyle=C.sunk; c.fillRect(bx,yb+20,bw,18); c.fillStyle=rgba(C.fault,0.6); c.fillRect(bx,yb+20,V(v0)-bx,18);
     [[WGF.v0f,'F67G 5 %',C.target],[WGF.v0b,'64B 15 %',C.amber]].forEach(([p,l,cl],i)=>{ c.strokeStyle=cl; c.lineWidth=2; c.beginPath(); c.moveTo(V(p),yb+14); c.lineTo(V(p),yb+44); c.stroke(); H.text(c,V(p)+3,yb+52+i*13,l,{al:'left',col:cl,font:`700 10px ${SANS}`}); }); c.restore();
     H.text(c,bx,yb+92,'Rg が大きいほど V0 は小さい。5 % を下回ると、どの装置も検出できない（高抵抗地絡）',{al:'left',col:C.muted,font:`600 10px ${SANS}`});
-    H.text(c,bx,yb+108,'F67G は I0 の向きも見るので、健全な F2（逆向き）は動かない',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); }
+    H.text(c,bx,yb+108,'F67G は I0 の向きも見るので、事故のない配電線（逆向き）は動かない',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); }
   else { H.text(c,40,yb+8,'66 kV は中性点を抵抗で接地しているので、地絡電流は約 300 A 流れる',{al:'left',col:C.muted,font:`600 11px ${SANS}`});
     H.text(c,40,yb+26,'87L は差電流で瞬時に、67G は零相電圧と零相電流の向きで 0.5 s の後備',{al:'left',col:C.muted,font:`600 11px ${SANS}`}); } }
 /* 励磁突入：差電流と第 2 高調波 */
@@ -3791,16 +3890,43 @@ function wChartInrush(c){ const S_=WS, b={x:56,y:34,w:370,h:250}, X=t=>b.x+t/1.5
   H.text(c,b.x,b.y-16,'電流 [A]',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); H.text(c,b.x+b.w,b.y-16,'第 2 高調波の割合',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
   const y0=b.y+b.h+30; ['差電流は T87 の動作値の 20 倍以上。大きさだけでは内部事故と見分けられない','第 2 高調波が 15 % 以上なら励磁突入と見て T87 を止める（抑制）','TP51 の瞬時要素（1,800 A）は突入電流（最大 1,400 A）より上に整定してある','限時要素は電流がすぐ減るので満了しない'].forEach((s,i)=>H.text(c,20,y0+i*17,'・'+s,{al:'left',col:C.ink,font:`600 11px ${SANS}`})); }
 
+/* 単独運転の不感帯：出力÷負荷と島の電圧。電圧の継電器と受動的方式が見えない範囲が重なる */
+function wChartIsl(c){ const Q=WQ, S_=WS, b={x:56,y:40,w:390,h:220}, X=r=>b.x+clamp(r,0,2)/2*b.w, Y=v=>b.y+b.h-clamp(v,0,1.6)/1.6*b.h, Vr=r=>Math.min(Math.sqrt(r),1.1*r);
+  $('wctitle').textContent='単独運転の不感帯'; $('wcsub').textContent='出力と負荷がつり合うと見えない';
+  const r0=Q.inv==='on'?Q.ppv/4:0, thr=8/30;
+  c.save(); c.fillStyle=rgba(C.amber,0.16); c.fillRect(b.x,Y(1.1),b.w,Y(0.8)-Y(1.1)); c.fillStyle=rgba(C.s2,0.14); c.fillRect(X(1-thr),b.y,X(1+thr)-X(1-thr),b.h);
+  c.fillStyle=rgba(C.fault,0.18); c.fillRect(X(Math.max(1-thr,0.8/1.1)),Y(1.1),X(Math.min(1+thr,1.21))-X(Math.max(1-thr,0.8/1.1)),Y(0.8)-Y(1.1));
+  c.strokeStyle=rgba(C.muted,0.22); c.lineWidth=1; c.font=`500 10px ${MONO}`; c.fillStyle=C.muted;
+  [0,0.5,1,1.5,2].forEach(r=>{ c.beginPath(); c.moveTo(X(r),b.y); c.lineTo(X(r),b.y+b.h); c.stroke(); c.textAlign='center'; c.textBaseline='top'; c.fillText(r.toFixed(1),X(r),b.y+b.h+5); });
+  [0,0.4,0.8,1.2,1.6].forEach(v=>{ c.beginPath(); c.moveTo(b.x,Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); c.textAlign='right'; c.textBaseline='middle'; c.fillText((v*100).toFixed(0)+' %',b.x-4,Y(v)); });
+  c.strokeStyle=C.ink; c.lineWidth=1.2; c.strokeRect(b.x,b.y,b.w,b.h);
+  c.strokeStyle=C.s1; c.lineWidth=2.4; c.beginPath(); for(let r=0.01;r<=2;r+=0.01){ r<0.02?c.moveTo(X(r),Y(Vr(r))):c.lineTo(X(r),Y(Vr(r))); } c.stroke();
+  [[0.8,'UVR 80 %'],[1.1,'OVR 110 %']].forEach(([v,l])=>{ c.strokeStyle=C.amber; c.setLineDash([5,3]); c.beginPath(); c.moveTo(b.x,Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); c.setLineDash([]); H.text(c,b.x+b.w-4,Y(v)+(v>1?-8:9),l,{al:'right',col:C.amber,font:`700 10px ${SANS}`}); });
+  c.restore();
+  H.text(c,X(1),b.y+12,'受動的方式が見えない',{col:C.s2,font:`700 10px ${SANS}`}); H.text(c,X(1),b.y+25,'（跳躍 8° 未満）',{col:C.s2,font:`600 10px ${SANS}`}); H.text(c,X(1),Y(0.95)+18,'不感帯',{col:C.fault,font:`700 12px ${SANS}`});
+  if(Q.inv==='on'){ H.dot(c,X(r0),Y(Vr(r0)),C.target,6,!!(S_.isl&&!S_.gb)); H.text(c,X(r0)+(r0>1.5?-10:10),Y(Vr(r0))-12,`いま ${r0.toFixed(2)}`,{al:r0>1.5?'right':'left',col:C.target,font:`700 11px ${MONO}`}); }
+  H.text(c,b.x,b.y-14,'島の電圧（INV が出力一定、負荷は抵抗）',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); H.text(c,b.x+b.w,b.y+b.h+22,'太陽光の出力 ÷ 配電線 F1 の負荷（4 MW）',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
+  const th=30*Math.abs(1-r0), y0=b.y+b.h+44, iv=(S_.X||{}).inv||{};
+  const L=[ Q.inv!=='on' ? '太陽光を「あり」にすると、52F1 を開いたあと単独運転になる' : `出力 ${Q.ppv} MW ÷ 負荷 4 MW = ${r0.toFixed(2)} → 島の電圧 ${(Vr(r0)*100).toFixed(0)} %、位相の跳躍 ${th.toFixed(0)}°`,
+    '電圧の継電器（UVR・OVR）：80〜110 % の間は見えない', '受動的方式：跳躍が 8° 未満（出力÷負荷が 0.73〜1.27）は見えない',
+    Q.ipro==='full' ? '能動的方式：INV が揺さぶり、単独運転なら周波数が動く → 約 0.5 s で検出' : '能動的方式：付けていない（不感帯では誰も見つけられない）',
+    S_.isl && !S_.gb ? `いま単独運転 ${(S_.te-S_.isl.t0).toFixed(2)} s・電圧 ${(iv.V*100).toFixed(0)} %・${(iv.f||60).toFixed(2)} Hz` : '' ];
+  L.forEach((s,i)=>{ if(s) H.text(c,20,y0+i*17,'・'+s,{al:'left',col:i===4?C.amber:C.ink,font:`${i===4?700:600} 11px ${SANS}`}); }); }
+
 /* ===== 操作 ===== */
 const WPARAMS=[
   {id:'loc', label:'事故の場所', type:'select', options:Object.entries(WFP).map(([k,f])=>[k,f.label])},
-  {id:'kind', label:'事故の種類', type:'select', options:[['3p','三相短絡'],['lg','一線地絡'],['turn','層間短絡（変圧器の中だけ）'],['inrush','変圧器の充電（励磁突入。事故ではない）']]},
+  {id:'kind', label:'事故の種類', type:'select', options:[['3p','三相短絡'],['lg','一線地絡'],['turn','層間短絡（変圧器の中だけ）'],['inrush','変圧器の充電（励磁突入。事故ではない）'],['open','52F1 を開く（作業停電。事故ではない）']]},
   {id:'pers', label:'事故の続き方（送電線・配電線）', type:'select', options:[['tmp','一時的（雷のフラッシオーバなど）'],['perm','永続（断線や樹木の接触など）']]},
   {id:'fail', label:'故障・不備', type:'select', options:[['none','なし'],['cbf1','52F1 が開かない'],['l87','87L の伝送路が切れている'],['t87','T87 を点検で外している'],['n96','96（ブッフホルツ）がない']]},
   {id:'h2', label:'T87 の第 2 高調波抑制', type:'select', options:[['true','あり'],['false','なし']]},
   {id:'fl', label:'F51（F1）の時限レバー', min:1, max:10, step:0.5, fmt:v=>v.toFixed(1)},
   {id:'tsl', label:'TS51 の時限レバー', min:1, max:10, step:0.5, fmt:v=>v.toFixed(1)},
   {id:'rg', label:'地絡抵抗 Rg（6.6 kV の地絡）', min:0, max:15, step:0.5, fmt:v=>v+' kΩ'},
+  {id:'inv', label:'太陽光（INV、F1 の末端）', type:'select', options:[['off','なし'],['on','あり']]},
+  {id:'ppv', label:'太陽光の出力', min:1, max:8, step:0.5, fmt:v=>v.toFixed(1)+' MW'},
+  {id:'ipro', label:'INV の連系保護', type:'select', options:[['full','UVR・OVR・OFR・UFR・OVGR＋受動的＋能動的'],['pas','能動的方式なし'],['pasng','能動的方式と OVGR なし']]},
+  {id:'ldc', label:'線路無電圧確認装置（変電所）', type:'select', options:[['true','あり'],['false','なし']]},
 ];
 const WPRESETS=[
   {l:'① 送電線の事故（近端）', p:{loc:'Ln',kind:'3p'}, k:'ok', t:'87L と 44S 第1段', note:'近端（2 km）の事故電流は 12.6 kA。87L と 44S の第 1 段がどちらも 0.03 s で動き、52L と 52T1 が 0.08 s に開く。雷のような一時的な事故はアークが消えるので、再閉路で送電が戻る（実際は数秒〜1 分後）。'},
@@ -3819,6 +3945,12 @@ const WPRESETS=[
   {l:'⑬ 高抵抗の地絡', p:{loc:'Ff',kind:'lg',rg:12}, k:'bad', t:'どれも検出できない', note:'地絡抵抗が 12 kΩ あると、V0 は 4 % しか出ない。F67G（V0 5 %）も 64B（15 %）も整定に届かず、事故が残る（高抵抗地絡。樹木の接触や、断線して地面に落ちた電線で起きる）。Rg を下げて、どこから検出できるか確かめよう。'},
   {l:'⑭ 母線の地絡', p:{loc:'B',kind:'lg'}, k:'ok', t:'64B が 2 s で', note:'6.6 kV 母線の地絡。どの配電線の ZCT にも自分の充電電流が逆向きに流れるだけなので、F67G はどちらも動かない。母線の 64B が 2.0 s で 52T2 を開く。'},
   {l:'⑮ 送電線の地絡', p:{loc:'Lf',kind:'lg'}, k:'ok', t:'87L', note:'66 kV 送電線の地絡。抵抗接地なので地絡電流は約 300 A。87L が 0.03 s で両端を切り、67G（0.5 s）は後備として復帰する。'},
+  {l:'⑯ INV：ほかの配電線の事故', p:{loc:'Gn',kind:'3p',inv:'on'}, k:'ok', t:'解列しない（FRT）', note:'太陽光 4 MW を配電線 F1 の末端につないだ。配電線 F2 の事故で、F1 の末端の電圧は 49 % まで下がるが、F2 の F51 が 0.525 s で動き、0.595 s に事故が除かれる。INV の UVR（1.0 s）は満了せず、運転を続ける（事故時運転継続、FRT）。INV の電流は F1 の F51 を逆向きに流れるが、整定 600 A に届かない。'},
+  {l:'⑰ INV：配電線 F1 の事故', p:{loc:'Fn',kind:'3p',inv:'on'}, k:'ok', t:'再閉路の前に解列', note:'F1 の事故で INV の端子電圧が 20 % 未満になり、INV はゲートブロックで電流を止める。INV は自分では電圧を作れないので、52F1 が開いたあとも F1 は無電圧のまま。UVR が 1.0 s で 52P を開き、2.565 s の再閉路より前に解列する。変電所の線路無電圧確認装置は、無電圧を確かめてから再閉路する。'},
+  {l:'⑱ INV：作業停電（つり合い）', p:{loc:'Fn',kind:'open',inv:'on'}, k:'ok', t:'能動的方式が検出', note:'作業のため 52F1 を開いた。太陽光 4 MW と F1 の負荷 4 MW がつり合っているので、電圧も位相もほとんど変わらない（右の図の不感帯）。能動的方式が周波数のずれを見つけて、切り離されてから 0.50 s で INV を止める。'},
+  {l:'⑲ INV：能動的方式なし', p:{loc:'Fn',kind:'open',inv:'on',ipro:'pas'}, k:'bad', t:'単独運転が続く', note:'同じ作業停電で、能動的方式がない場合。UVR・OVR も受動的方式も不感帯に入っていて見えず、F1 は INV に充電されたまま（作業者の感電のおそれ）。「太陽光の出力」を 2 MW にすると、位相の跳躍が 15° になり、受動的方式が 0.1 s で見つける。'},
+  {l:'⑳ INV：地絡のあと単独運転', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm'}, k:'bad', t:'再閉路できない', note:'能動的方式と OVGR を付けていない INV。F1 の地絡で F67G が 52F1 を開くと、つり合った単独運転が残る（非接地の地絡は線間電圧を変えないので、UVR も動かない）。2.985 s の再閉路のとき F1 に電圧が残っているので、線路無電圧確認装置が再閉路を止める。非同期投入は避けたが、F1 の停電が長引く。OVGR があれば 0.5 s で解列する。'},
+  {l:'㉑ 同じ・線路無電圧確認なし', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm',ldc:false}, k:'bad', t:'非同期投入', note:'線路無電圧確認装置がないと、INV が運転したまま再閉路してしまう（非同期投入）。位相のずれた電源どうしがつながって大きな電流が流れ、INV や負荷の機器を傷める。永続事故なので F67G がもう一度動き、ロックアウトする。'},
 ];
 function wBuild(){ $('wparams').innerHTML=WPARAMS.map(p=>{ const id='wp-'+p.id, v=WQ[p.id];
     if(p.type==='select') return `<div class="param"><label for="${id}">${p.label}</label><select id="${id}" data-k="${p.id}">${p.options.map(([o,l])=>`<option value="${o}"${String(v)===o?' selected':''}>${l}</option>`).join('')}</select></div>`;
@@ -3828,7 +3960,7 @@ function wBuild(){ $('wparams').innerHTML=WPARAMS.map(p=>{ const id='wp-'+p.id, 
 function wSync(){ WPARAMS.forEach(p=>{ const el=$('wp-'+p.id); if(!el) return; el.value=String(WQ[p.id]); const o=$('wp-'+p.id+'-o'); if(o) o.textContent=p.fmt(WQ[p.id]); });
   $('wpresets').querySelectorAll('.preset').forEach(b=>{ const pr=WPRESETS[+b.dataset.i]; b.setAttribute('aria-pressed', Object.entries({...WQ0,...pr.p}).every(([k,v])=>String(WQ[k])===String(v))); }); }
 function wSetParam(k,v){ const p=WPARAMS.find(x=>x.id===k); WQ[k] = p.type==='select' ? (v==='true'?true:v==='false'?false:v) : +v;
-  if(k==='kind' && !wOK(WQ.loc,WQ.kind)) WQ.loc = WQ.kind==='lg' ? 'Fn' : 'Tr';
+  if(k==='kind' && !wOK(WQ.loc,WQ.kind)) WQ.loc = WQ.kind==='lg'||WQ.kind==='open' ? 'Fn' : 'Tr';
   if(k==='loc' && !wOK(WQ.loc,WQ.kind)) WQ.kind='3p'; wSync(); }
 function wInit(){ if(WS) return; wBuild(); wReset(); wSync(); }
 $('wparams').addEventListener('input',e=>{ const k=e.target.dataset.k; if(!k) return; wSetParam(k,e.target.value); $('wnote').textContent='条件を変えた。シナリオの説明は当てはまらないことがあるので、「正動作なら」と経過で確かめよう。'; if(WPARAMS.find(x=>x.id===k).type==='select') wReset(); });
@@ -3846,25 +3978,31 @@ function wFrame(rd){ let dt=0;
       if(WS.log.length>n0 && OPT.beat && L && /trip|cb|bad/.test(L.cls)){ wHold=BEAT; wAcc=0; break; } } }
   G.dt=dt; G.t=WS.t; drawW(); drawWChart(); }
 function wDOM(){ const D=WS.dev, Q=WQ, f=WFP[Q.loc], lg=Q.kind==='lg', X=WS.X||{};
-  $('wrace').querySelectorAll('.rrow').forEach(el=>{ const rw=WROWS.find(x=>x.id===el.dataset.id), d=D[rw.id], show = lg ? !rw.s : !rw.g; el.hidden=!show; if(!show) return;
-    const rl=wRoles[rw.id], nh=(rl?`<i class="rl ${rl}" title="${ROLE[rl][0]}">${ROLE[rl][1]}</i>`:'')+rw.name, ne=el.querySelector('.nm'); if(ne._h!==nh){ ne.innerHTML=nh; ne._h=nh; }
+  $('wrace').querySelectorAll('.rrow').forEach(el=>{ const rw=WROWS.find(x=>x.id===el.dataset.id), d=D[rw.id], show = rw.inv ? Q.inv==='on' : lg ? !rw.s : !rw.g; el.hidden=!show; if(!show) return;
+    const rl=wRoles[rw.id]||(rw.inv?wRoles.inv:null), nh=(rl?`<i class="rl ${rl}" title="${ROLE[rl][0]}">${ROLE[rl][1]}</i>`:'')+rw.name, ne=el.querySelector('.nm'); if(ne._h!==nh){ ne.innerHTML=nh; ne._h=nh; }
     el.classList.toggle('on',d.pick&&!d.tripped); el.classList.toggle('fire',d.tripped); el.querySelector('.cur').textContent=d.v; el.querySelector('.bar i').style.width=(d.tripped?100:d.prog*100)+'%';
     const st = d.status==='検出中' && d.top ? `検出中 ${(d.prog*d.top).toFixed(2)} / ${d.top.toFixed(2)} s` : (d.status==='動作'&&d.tTrip!=null?`動作 ${d.tTrip.toFixed(3)}`+(d.tOpen!=null?`・開 ${d.tOpen.toFixed(3)}`:'')+' s':d.status); el.querySelector('.st').textContent=st; });
   tlPaint($('wlog'), WS.log, wFull, wFocus);
-  const live=wIsland(WS.open,f.pos), outs=[]; if(!live.has('M')) outs.push('送電線');
-  if(!live.has('B')) outs.push('6.6 kV 母線と配電線 F1・F2'); else { if(!live.has('E1')) outs.push('配電線 F1'); if(!live.has('E2')) outs.push('配電線 F2'); }
-  const faultOn = WS.ev && ((Q.kind==='3p' && WS.on && live.has(f.node)) || (lg && (X.V0>0||X.lg66)) || (Q.kind==='turn' && X.turn));
+  const ivRun=Q.inv==='on' && WS.invRun && !WS.open['52P'], ener=wEnergized(WS.open,f.pos,ivRun && !WS.gb), live=ener.g, hazard=!!ener.inv, outs=[];
+  if(!live.has('M')) outs.push('送電線'); if(!live.has('B')) outs.push('6.6 kV 母線と配電線 F1・F2'); else { if(!live.has('E1')) outs.push('配電線 F1'); if(!live.has('E2')) outs.push('配電線 F2'); }
+  const faultOn = WS.ev && ((Q.kind==='3p' && WS.on && ener.all.has(f.node)) || (lg && (X.V0>0||X.lg66||X.V0i>0)) || (Q.kind==='turn' && X.turn));
   let pill, msg;
   if(Q.kind==='inrush' && !WS.ev){ pill=['var(--muted)','停止中']; msg='変圧器は切り離してある。「変圧器を充電する」で 52T1 を入れる'; }
   else if(!WS.ev){ pill=null; }
-  else { const inr = X.inr && X.inr.I>0.3; pill = faultOn ? ['var(--amber)','事故中'] : inr ? ['var(--amber)','突入電流'] : outs.length ? ['var(--fault)','停電'] : ['var(--ok)','給電中'];
-    msg = (faultOn?'事故電流が流れている。':'') + (inr?'変圧器の励磁突入電流が流れている。':'') + (outs.length?'停電している範囲：'+outs.join('・'):(faultOn||inr?'':'事故は取り除かれ、すべて給電中')); }
-  const vh = pill ? `<span class="pill" style="background:${pill[0]}">${pill[1]}</span><span>${msg}${WS.ev?`　（${Q.kind==='inrush'?'投入':'事故'}から ${WS.te.toFixed(3)} s）`:''}</span>` : '<span class="pill">平常</span><span>事故の場所を図の丸か「シナリオ」で選ぶ</span>';
+  else { const inr = X.inr && X.inr.I>0.3; pill = faultOn ? ['var(--amber)','事故中'] : hazard ? ['var(--amber)','単独運転'] : inr ? ['var(--amber)','突入電流'] : outs.length ? ['var(--fault)','停電'] : ['var(--ok)','給電中'];
+    msg = (faultOn?'事故電流が流れている。':'') + (inr?'変圧器の励磁突入電流が流れている。':'') + (outs.length?'系統から停電している範囲：'+outs.join('・'):(faultOn||inr?'':'事故は取り除かれ、すべて給電中'))
+      + (hazard?'。ただし太陽光（INV）が単独運転で一部を充電している':''); }
+  const vh = pill ? `<span class="pill" style="background:${pill[0]}">${pill[1]}</span><span>${msg}${WS.ev?`　（${Q.kind==='inrush'?'投入':Q.kind==='open'?'開放':'事故'}から ${WS.te.toFixed(3)} s）`:''}</span>` : '<span class="pill">平常</span><span>事故の場所を図の丸か「シナリオ」で選ぶ</span>';
   const ve=$('wverdict'); if(ve._h!==vh){ ve.innerHTML=vh; ve._h=vh; }
-  $('wfire').textContent = Q.kind==='inrush' ? (WS.ev?'もう一度充電する':'変圧器を充電する') : (WS.ev?'もう一度起こす':'事故を起こす');
+  $('wfire').textContent = Q.kind==='inrush' ? (WS.ev?'もう一度充電する':'変圧器を充電する') : Q.kind==='open' ? (WS.ev?'もう一度開く':'52F1 を開く') : (WS.ev?'もう一度起こす':'事故を起こす');
   const k=JSON.stringify(WQ); if(k!==wExpKey){ wExpKey=k; const E=wExpect(), tx={}; ['main','sub','back','no'].forEach(r=>(E[r]||[]).forEach(id=>tx[id]=wExpTime(id))); wExpCache={E,tx}; }
-  const {E,tx}=wExpCache, busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped), quiet = WS.ev && !busy && (Q.kind==='inrush' ? WS.te>1.5 : WS.te>0.3 && faultOn);
-  const eh=expHTML(E, wNm, id=>tx[id], WS.ev?expJudge(E, WS.trips, WS.ever, wNm, quiet, !faultOn):null), ee=$('wexp'); if(ee._h!==eh){ ee.innerHTML=eh; ee._h=eh; }
+  const {E,tx}=wExpCache, busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped);
+  const quiet = WS.ev && !busy && (Q.kind==='inrush' ? WS.te>1.5 : Q.kind==='open' ? WS.te>1.0 && !hazard : WS.te>0.3 && faultOn);
+  let res = WS.ev ? expJudge(E, WS.trips, WS.ever, wNm, quiet, !(Q.kind==='open' ? hazard : faultOn)) : null;
+  if(WS.ev && hazard && res && res[0]==='run') res=['run','単独運転が続いている。INV の連系保護が見つけるのを待っている。']; if(WS.ev && WS.hz) res=['bad', WHZT[WS.hz]];
+  if(res && res[0]==='ok' && Q.kind==='open' && E.main.includes('inv')) res=['ok','太陽光（INV）の連系保護が単独運転を見つけて INV を止めた。配電線 F1 は停電した（作業できる状態）。'];
+  if(res && res[0]==='ok' && E.no.includes('inv') && !WS.trips.some(t=>t.id==='inv')) res=['ok',res[1]+' 太陽光（INV）は解列せずに運転を続けた（FRT）。'];
+  const eh=expHTML(E, wNm, id=>tx[id], res), ee=$('wexp'); if(ee._h!==eh){ ee.innerHTML=eh; ee._h=eh; }
   $('wplay').textContent=(wPaused||wHold>0)?'▶':'❚❚'; }
 if(h0==='grid') setView('grid');
 </script>
