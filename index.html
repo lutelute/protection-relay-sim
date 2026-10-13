@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="保護継電器12種の動作と、工場の高圧受電設備の単線結線図での保護協調を、アニメーションで確かめる教材。">
+<meta name="description" content="保護継電器12種の動作と特性の形の理由、検出できない事故と装置の組み合わせ、発電機・負荷・線路・INV のモデル化と解析のガイドを、動く図で確かめる講義教材。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23202422%27/%3E%3Cpath d=%27M9 2 4 9h3l-1 5 5-7H8z%27 fill=%27%23E8531E%27/%3E%3C/svg%3E">
 <meta charset="utf-8">
 <title>保護継電器 動作シミュレータ</title>
@@ -259,6 +259,8 @@ footer{font-size:12px;color:var(--muted)}
   <button class="tab" role="tab" id="tabRelay" aria-selected="true">継電器ごとの動作</button>
   <button class="tab" role="tab" id="tabAll" aria-selected="false">12 種を見比べる</button>
   <button class="tab" role="tab" id="tabSld" aria-selected="false">単線結線図で見る（工場の高圧受電設備）</button>
+  <button class="tab" role="tab" id="tabGaps" aria-selected="false">抜け穴と組み合わせ</button>
+  <button class="tab" role="tab" id="tabModel" aria-selected="false">モデル化と解析</button>
 </nav>
 <div id="viewRelay" class="view">
 <nav class="rack" id="rack" aria-label="継電器の選択"></nav>
@@ -1484,6 +1486,7 @@ $('speed').addEventListener('click', e=>{ const b=e.target.closest('button'); if
 [['tCap','cap'],['tBeat','beat'],['tSnd','snd'],['tPred','pred']].forEach(([id,k])=>{ const b=$(id); b.setAttribute('aria-pressed',OPT[k]); b.addEventListener('click',()=>{ OPT[k]=!OPT[k]; b.setAttribute('aria-pressed',OPT[k]); if(k==='beat'&&!OPT.beat) hold=0; if(k==='snd'&&OPT.snd){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume(); }catch(e){} } }); });
 document.addEventListener('keydown', e=>{ const tg=e.target.tagName; if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA'||e.metaKey||e.ctrlKey||e.altKey) return;
   if(VIEW==='sld'){ if(e.key===' '){ e.preventDefault(); if(sHold>0) sHold=0; else sPaused=!sPaused; } else if(e.key==='f'||e.key==='F'){ sFire(); sPaused=false; } else if(e.key==='r'||e.key==='R'){ sReset(); } return; }
+  if(VIEW!=='relay') return;
   if(e.key===' '){ e.preventDefault(); autoFire=null; togglePause(); } else if(e.key==='f'||e.key==='F'){ stopTour(); autoFire=null; askOrFire(); } else if(e.key==='r'||e.key==='R'){ stopTour(); autoFire=null; paused=false; resetSim(); }
   else if(e.key==='ArrowRight'){ e.preventDefault(); frameStep(0.01); } else if(e.key==='ArrowLeft'){ e.preventDefault(); frameStep(-0.01); } });
 $('scene').addEventListener('click', e=>{ if(!R.click) return; const r=$('scene').getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*720, y=(e.clientY-r.top)/r.height*360;
@@ -1540,7 +1543,7 @@ let last=performance.now();
 let userScroll=0; ['pointerdown','touchstart','wheel'].forEach(ev=>$('scene').parentElement.addEventListener(ev,()=>{ userScroll=performance.now()+4000; },{passive:true}));
 function loop(now){ const rd=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
   if(VIEW==='sld'){ sldFrame(rd); if(++frame%3===0) sDOM(); requestAnimationFrame(loop); return; }
-  if(VIEW==='all'){ requestAnimationFrame(loop); return; }   /* 一覧の図は止まった絵 */
+  if(VIEW!=='relay'){ requestAnimationFrame(loop); return; }   /* 一覧・抜け穴・モデル化のタブは、継電器の再生を止める */
   let sp=speed; if(OPT.beat && phase()==='trip') sp=Math.min(sp,0.1);   /* トリップ指令が走る間はスロー */
   let simDt=0;
   if(hold>0) hold=Math.max(0,hold-rd);
@@ -1690,7 +1693,8 @@ function paintExplain(){ const e=EXPL[R.id], g=$('exgrid'); if(!g) return; if(!e
     <div class="card exc phys"><h3><span class="chip">物理</span>事故で起きること</h3><p>${e.phys.t}</p>${eqs(e.phys.eq)}</div>
     <div class="card exc judge"><h3><span class="chip">判定</span>継電器が見て決めること</h3><p>${e.judge.t}</p>${eqs(e.judge.eq)}</div>
     <div class="card exc after wide"><h3><span class="chip">戻る</span>動作のあと、物理側が戻るまで</h3><p>${e.after.t}</p><div class="ruler">${xRuler(e.after.tl)}</div>
-      <p class="rl-legend"><span class="rl-k ev">事故</span><span class="rl-k relay">継電器が動作</span><span class="rl-k cb">遮断器が開く</span><span class="rl-k back">物理量が戻る</span><span class="rl-k rest">送電・復旧</span>横軸は対数。時間は目安で、事故の種類・電圧階級・事業者・設備で違う。</p></div>`; }
+      <p class="rl-legend"><span class="rl-k ev">事故</span><span class="rl-k relay">継電器が動作</span><span class="rl-k cb">遮断器が開く</span><span class="rl-k back">物理量が戻る</span><span class="rl-k rest">送電・復旧</span>横軸は対数。時間は目安で、事故の種類・電圧階級・事業者・設備で違う。</p></div>`;
+  if(typeof paintExtra==='function') paintExtra(g, R.id); }
 paintExplain();
 
 /* ===== 12 種を見比べる：判定の原理でグループに分け、事故中の結線図を並べる ===== */
@@ -2014,12 +2018,1093 @@ function sldFrame(rd){ let dt=0;
   if(sHold>0) sHold=Math.max(0,sHold-rd); else if(!sPaused){ sAcc+=rd*sSpeed; while(sAcc>=DT){ const n0=SS.log.length; sStep(DT); sAcc-=DT; dt+=DT; const L=SS.log[SS.log.length-1];
       if(SS.log.length>n0 && OPT.beat && L && /trip|cb|bad/.test(L.cls)){ sHold=BEAT; sAcc=0; break; } } }
   G.dt=dt; G.t=SS.t; drawSld(); drawTcc(); }
-function setView(v){ VIEW=v; $('viewRelay').hidden=v!=='relay'; $('viewSld').hidden=v!=='sld'; $('viewAll').hidden=v!=='all';
-  $('tabRelay').setAttribute('aria-selected',v==='relay'); $('tabSld').setAttribute('aria-selected',v==='sld'); $('tabAll').setAttribute('aria-selected',v==='all');
+const VIEWS=[['relay','Relay'],['all','All'],['sld','Sld'],['gaps','Gaps'],['model','Model']];
+function setView(v){ VIEW=v; VIEWS.forEach(([k,n])=>{ const el=$('view'+n); if(el) el.hidden=v!==k; $('tab'+n).setAttribute('aria-selected',v===k); });
   if(v==='sld' && !SS){ sBuild(); sReset(); sSync(); } if(v==='all') buildAll();
-  try{ history.replaceState(null,'', v==='sld'?'#sld':v==='all'?'#all':'#'+R.id); }catch(e){} }
-$('tabRelay').addEventListener('click',()=>setView('relay')); $('tabAll').addEventListener('click',()=>{ stopTour(); setView('all'); }); $('tabSld').addEventListener('click',()=>{ stopTour(); setView('sld'); });
+  if(v==='gaps' && typeof buildGaps==='function') buildGaps(); if(v==='model' && typeof buildModel==='function') buildModel();
+  try{ history.replaceState(null,'', v==='relay'?'#'+R.id:'#'+v); }catch(e){} }
+VIEWS.forEach(([k,n])=>$('tab'+n).addEventListener('click',()=>{ if(k!=='relay') stopTour(); setView(k); }));
 if(h0==='sld') setView('sld'); if(h0==='all') setView('all');
 </script>
 
-</html>
+<style>
+/* モデル化と解析タブ（md-） */
+.md-lead{margin:0;max-width:80ch;color:var(--muted)}
+.md-sec{display:flex;flex-direction:column;gap:12px}
+.md-sec>h2{font-size:20px;font-weight:900;display:flex;align-items:baseline;gap:10px;margin:0}
+.md-n{font-family:var(--f-mono);font-size:13px;color:var(--bg);background:var(--ink);border-radius:3px;padding:1px 8px;flex:none}
+.md-sec p{margin:0;max-width:78ch;font-size:14px;line-height:1.75}
+.md-sub{border-top:1px dashed var(--rule);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.md-sub h3{font-size:16px;margin:0}
+.md-two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.md-two{grid-template-columns:minmax(0,1fr)}}
+.md-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.md-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.md-pair{grid-template-columns:minmax(0,1fr)}}
+.md-cv{min-width:0}.md-cv canvas{display:block;width:100%;background:var(--sunk);border-radius:3px}
+.md-ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}
+.md-ctl .seg{flex-wrap:wrap}
+.md-segw{display:flex;flex-direction:column;gap:4px}
+.md-ros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.md-ros .ro small{display:block;font-size:11px;color:var(--muted);line-height:1.45}
+.md-ros .ro b.bad{color:var(--fault)}.md-ros .ro b.good{color:var(--ok)}
+.md-msg{font-size:14px;line-height:1.7;border-left:3px solid var(--live);padding-left:10px;margin:0}
+.md-scroll{overflow-x:auto;border-radius:3px}
+.md-map svg{display:block;width:100%;min-width:680px;height:auto}
+.mm-tick{stroke:var(--rule);stroke-width:1}.mm-ax{stroke:var(--ink);stroke-width:1.2}
+.mm-tl{fill:var(--muted);font:500 11px var(--f-mono)}
+.mm-gh{fill:var(--muted);font:700 11px var(--f-display);letter-spacing:.08em}
+.mm-lab{fill:var(--ink);font:500 12px var(--f-body)}.mm-bt{fill:var(--ink);font:500 11px var(--f-body)}
+.mm-ph{fill:var(--amber);opacity:.28}.mm-an{fill:var(--s1);opacity:.25}.mm-snap{stroke:var(--s1);stroke-width:2;stroke-dasharray:5 4}
+.mm-rel{fill:var(--muted)}.mm-rr{fill:var(--muted);opacity:.35}.mm-rc{fill:var(--s2)}
+.mm-hl{fill:var(--target);opacity:.12}
+.mm-on .mm-rel{fill:var(--target)}.mm-on .mm-rr{fill:var(--target);opacity:.5}.mm-on .mm-lab{font-weight:700}
+.mm-cover.mm-ph{opacity:.6}.mm-cover.mm-an{opacity:.55}
+.md-legend{font-size:12px;color:var(--muted);margin:0}
+.md-pick{display:flex;flex-wrap:wrap;gap:6px}
+.md-rb{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--rule);background:var(--surface);border-radius:3px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+.md-rb .mono{font-weight:700}
+.md-rb:hover{border-color:var(--muted)}
+.md-rb[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.md-card{border:1.5px solid var(--target);border-radius:4px;padding:12px 14px;background:var(--bg)}
+.md-card h3{font-size:16px;margin:0 0 8px}
+.md-rows{display:grid;grid-template-columns:8em minmax(0,1fr);gap:6px 12px;margin:0 0 10px;font-size:14px;line-height:1.7}
+.md-rows dt{font-size:12px;color:var(--muted);padding-top:3px;font-weight:700}
+.md-rows dd{margin:0}
+@media (max-width:560px){.md-rows{grid-template-columns:minmax(0,1fr);gap:0}.md-rows dd{margin-bottom:8px}}
+.md-ladder{display:flex;flex-direction:column;gap:8px}
+.md-lrow{display:grid;grid-template-columns:5.5em repeat(4,minmax(0,1fr));gap:6px;align-items:stretch}
+.md-lh{font-family:var(--f-display);font-weight:700;display:flex;align-items:center;font-size:15px}
+.md-lhd{font-size:11px;color:var(--muted);letter-spacing:.06em;text-align:center;align-self:end}
+.md-step{border-radius:3px;padding:6px 8px;font-size:13px;line-height:1.5;border:1px solid var(--rule);min-width:0}
+.md-step b{display:block;font-size:13px}.md-step span{color:var(--muted);font-size:12px}
+.md-step .md-tagm{display:none;font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.06em}
+.md-step.l1{background:var(--surface)}
+.md-step.l2{background:color-mix(in srgb,var(--live) 9%,var(--surface))}
+.md-step.l3{background:color-mix(in srgb,var(--live) 17%,var(--surface))}
+.md-step.l4{background:color-mix(in srgb,var(--live) 26%,var(--surface))}
+.md-arrow{font-size:12px;color:var(--muted);text-align:right;margin:0}
+@media (max-width:700px){.md-lrow{grid-template-columns:repeat(2,minmax(0,1fr))}.md-lh{grid-column:1/-1}.md-lrow.md-lhrow{display:none}.md-step .md-tagm{display:block}}
+.md-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.md-stp{border:1px solid var(--rule);border-radius:4px;padding:10px 12px;background:var(--bg);min-width:0}
+.md-stp h4{margin:0 0 6px;font-family:var(--f-display);font-size:15px;display:flex;gap:8px;align-items:baseline}
+.md-stp h4 .md-n{font-size:12px}
+.md-stp p{font-size:13px;line-height:1.7}
+.md-stp .eq{font-size:13px;white-space:nowrap}
+.md-tbl{width:100%;border-collapse:collapse;font-size:13px;line-height:1.6;min-width:560px}
+.md-tbl th,.md-tbl td{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:left;vertical-align:top}
+.md-tbl th{background:var(--sunk);font-family:var(--f-display);font-size:12px;letter-spacing:.04em}
+.md-tbl td:first-child{font-weight:700;white-space:nowrap}
+.md-note{font-size:12px;color:var(--muted);margin:0}
+.md-ul{margin:0;padding-left:1.2em;font-size:14px;line-height:1.75;max-width:80ch}
+.md-cv .md-cap{font-size:12px;color:var(--muted);margin:4px 0 0}
+</style>
+
+<section id="viewModel" class="view" hidden>
+  <p class="md-lead">このシミュレータは、発電機・負荷・線路をかなり簡単なモデルで計算している。自分で整定や協調を計算するときは、どこまで細かくモデル化するかを決めなければならない。決め手は「どの継電器の、どの時間を見たいか」。このタブでは、その選び方を図を動かしながら確かめる。</p>
+
+  <section class="card md-sec" aria-labelledby="mdH0">
+    <h2 id="mdH0"><span class="md-n">0</span>時間の地図：見たい時間で解析の方法が決まる</h2>
+    <p>上の帯は電力系統で起きる現象、中の帯は解析の方法、下の印は継電器が動くまでの時間（このシミュレータの整定の例）。継電器の印が入る帯の解析を使えば、その継電器の判定を再現できる。横軸は対数。</p>
+    <div class="md-scroll md-map" id="mdMap"></div>
+    <p class="md-legend">継電器を選ぶと、その印と、印にかかる現象・解析の帯が濃くなる。</p>
+    <div class="md-pick" id="mdPick" role="group" aria-label="継電器を選ぶ"></div>
+    <div class="md-card" id="mdCard" aria-live="polite"></div>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH1">
+    <h2 id="mdH1"><span class="md-n">1</span>細かさのはしご</h2>
+    <p>右へ行くほど細かく、計算も重くなる。いつも右端がよいわけではない。データがそろわないまま細かいモデルを使うと、定数の誤差が効いて結果がかえって不確かになる。見たい継電器と時間に足りる、いちばん左を選ぶ。</p>
+    <div class="md-ladder" id="mdLadder"></div>
+    <p class="md-arrow">粗い（手計算）→ 細かい（専用ソフト）</p>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH2">
+    <h2 id="mdH2"><span class="md-n">2</span>発電機：どのリアクタンスを使うか</h2>
+    <div class="md-sub">
+      <h3>短絡電流は時間とともに減る</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdGenCv" aria-label="同期発電機の短絡電流。上は事故直後 0.2 秒の瞬時値、下は 5 秒までの交流分の実効値"></canvas></div>
+          <div class="md-ctl">
+            <div class="param"><label for="mdXe"><span>事故点までのリアクタンス <i>X</i><sub>e</sub></span><output id="mdXeO"></output></label><input type="range" id="mdXe" min="0" max="1" step="0.05" value="0"></div>
+            <div class="param"><label for="mdAl"><span>事故が起きた瞬間の電圧の位相</span><output id="mdAlO"></output></label><input type="range" id="mdAl" min="0" max="90" step="5" value="0"></div>
+            <div class="md-segw"><span class="seglabel">定電圧源のモデルを重ねる</span><div class="seg" id="mdOv" role="group" aria-label="定電圧源のモデルを重ねる"><button data-v="1" aria-pressed="true">重ねる</button><button data-v="0" aria-pressed="false">消す</button></div></div>
+            <div class="md-segw"><span class="seglabel">AVR（界磁を強める）</span><div class="seg" id="mdAvr" role="group" aria-label="AVR"><button data-v="0" aria-pressed="true">なし</button><button data-v="1" aria-pressed="false">あり（頂上 2 倍）</button></div></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>同期発電機の端子近くで短絡すると、電流は最初が大きく、だんだん減る。界磁巻線と制動巻線の磁束が、時間をかけて電機子反作用に押し戻されるため。この減り方を 3 つのリアクタンスで表す。</p>
+          <div class="eq"><i>I</i>(<i>t</i>) = <i>E</i>[(1/<i>X</i>''<sub>d</sub> − 1/<i>X</i>'<sub>d</sub>) e<sup>−<i>t</i>/<i>T</i>''</sup> + (1/<i>X</i>'<sub>d</sub> − 1/<i>X</i><sub>d</sub>) e<sup>−<i>t</i>/<i>T</i>'</sup> + 1/<i>X</i><sub>d</sub>]</div>
+          <dl class="dl">
+            <dt>初期過渡 <i>X</i>''<sub>d</sub></dt><dd>0.2 pu <small>事故直後の数サイクル</small></dd>
+            <dt>過渡 <i>X</i>'<sub>d</sub></dt><dd>0.3 pu <small>0.1〜1 s 程度</small></dd>
+            <dt>同期 <i>X</i><sub>d</sub></dt><dd>1.5 pu <small>数秒より先（AVR がなければ）</small></dd>
+          </dl>
+          <div class="md-ros" id="mdGenRo"></div>
+          <p class="md-msg" id="mdGenMsg"></p>
+        </div>
+      </div>
+      <p class="key">定電圧源のモデルは「その時刻にいちばん近いリアクタンス」での近似。瞬時要素と遮断器の容量には、最大になる <i>X</i>''<sub>d</sub> を使う（安全側）。0.1〜1 s 台の限時要素の協調には <i>X</i>'<sub>d</sub> を使うが、時間が延びるほど実際の電流は小さくなる。AVR がない（または端子電圧から励磁を取っていて事故で電源を失う）と、数秒後の電流は定格を下回り、過電流継電器が見失うことがある。発電機の過電流保護に電圧抑制付き（51V）を使うのはこのため。</p>
+      <p>事故点までのリアクタンス <i>X</i><sub>e</sub> を大きくすると、<i>X</i>''<sub>d</sub> と <i>X</i>'<sub>d</sub> の差が目立たなくなる。発電機から遠い短絡は、電圧源と一定のインピーダンスで十分に表せる（IEC 60909 の「発電機から遠い短絡」）。投入の位相で直流分が乗り、時定数 <i>T</i><sub>a</sub> = <i>X</i>/(ω<i>R</i>) で消える。直流分は遮断器の容量と CT 飽和の検討で効く。</p>
+    </div>
+
+    <div class="md-sub">
+      <h3>事故を何秒で切れば、発電機が脱調しないか</h3>
+      <div class="md-pair">
+        <div class="md-cv"><canvas id="mdSwD" aria-label="相差角 δ の時間変化"></canvas></div>
+        <div class="md-cv"><canvas id="mdSwP" aria-label="電力相差角曲線と等面積法"></canvas></div>
+      </div>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-ctl">
+            <div class="param"><label for="mdTc"><span>事故の除去時間 <i>t</i><sub>c</sub></span><output id="mdTcO"></output></label><input type="range" id="mdTc" min="0.05" max="0.5" step="0.01" value="0.15"></div>
+            <div class="param"><label for="mdH"><span>慣性定数 <i>H</i></span><output id="mdHO"></output></label><input type="range" id="mdH" min="2" max="8" step="0.5" value="5"></div>
+          </div>
+          <div class="md-ros" id="mdSwRo"></div>
+        </div>
+        <div class="md-col">
+          <p>事故中は発電機の電気出力 <i>P</i><sub>e</sub> が落ちるが、タービンからの機械入力 <i>P</i><sub>m</sub> はすぐには変わらない。差の分だけ回転子が加速し、相差角 δ が開く。事故を切ると <i>P</i><sub>e</sub> が <i>P</i><sub>m</sub> を上回り、減速に変わる。加速した分の面積 <i>A</i><sub>1</sub> を、減速の面積 <i>A</i><sub>2</sub> で取り返せれば安定（等面積法）。</p>
+          <div class="eq">(2<i>H</i>/ω<sub>0</sub>) d²δ/d<i>t</i>² = <i>P</i><sub>m</sub> − <i>P</i><sub>max</sub> sin δ</div>
+          <p class="md-note">1 機無限大母線。<i>P</i><sub>max</sub> は事故前 2.0、事故中 0.4、除去後 1.5（1 回線を切った後）、<i>P</i><sub>m</sub> = 1.0 pu。制動は入れていない。</p>
+        </div>
+      </div>
+      <p class="key">主保護（87 差動、44 距離の第1段）が数十 ms で動くのは、この臨界除去時間に間に合わせるため。後備保護（0.3 s 以上）で切ると脱調することがある。再閉路や脱調の検討、距離継電器の電力動揺ブロックの整定には、このモデルが要る。</p>
+    </div>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH3">
+    <h2 id="mdH3"><span class="md-n">3</span>負荷：電圧が下がると、電流は増えるか減るか</h2>
+    <div class="md-sub">
+      <h3>ZIP モデル</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdZipCv" aria-label="電圧と負荷の電力・電流の関係"></canvas></div>
+          <div class="md-ctl">
+            <div class="param"><label for="mdV"><span>電圧 <i>V</i></span><output id="mdVO"></output></label><input type="range" id="mdV" min="0.3" max="1.1" step="0.01" value="0.8"></div>
+            <div class="md-segw"><span class="seglabel">負荷の中身（割合は例）</span><div class="seg" id="mdZipPre" role="group" aria-label="負荷の中身"><button data-v="heat" aria-pressed="false">電熱・照明</button><button data-v="mix" aria-pressed="true">一般の需要</button><button data-v="inv" aria-pressed="false">INV 機器・電動機</button></div></div>
+            <div class="param"><label for="mdZz"><span>定インピーダンス Z</span><output id="mdZzO"></output></label><input type="range" id="mdZz" min="0" max="100" step="5" value="40"></div>
+            <div class="param"><label for="mdZi"><span>定電流 I</span><output id="mdZiO"></output></label><input type="range" id="mdZi" min="0" max="100" step="5" value="20"></div>
+            <div class="param"><label for="mdZp"><span>定電力 P</span><output id="mdZpO"></output></label><input type="range" id="mdZp" min="0" max="100" step="5" value="40"></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>負荷が電圧でどう変わるかを、定インピーダンス（Z）・定電流（I）・定電力（P）の混ぜ合わせで表す。</p>
+          <div class="eq"><i>P</i> = <i>P</i><sub>0</sub>(<i>a</i><sub>Z</sub><i>V</i>² + <i>a</i><sub>I</sub><i>V</i> + <i>a</i><sub>P</sub>)　　<i>I</i> = <i>P</i> / <i>V</i></div>
+          <div class="md-ros" id="mdZipRo"></div>
+          <p class="key">定電力の負荷（INV で制御された機器、電動機の多い負荷）は、電圧が下がると電流が増える。電流が増えると線路の電圧降下が増え、電圧はさらに下がる。UVR の整定や、事故の後の電圧回復の検討で効く。計算ソフトは、電圧が 0.7 pu 前後より下がると定電力を定インピーダンスに切り替える（そのままでは解が求まらなくなるため。切り替える電圧はソフトの設定による）。</p>
+        </div>
+      </div>
+    </div>
+    <div class="md-sub">
+      <h3>電動機は事故の直後だけ電流を出す</h3>
+      <div class="md-two">
+        <div class="md-cv"><canvas id="mdMotCv" aria-label="事故電流の内訳。系統からの電流と、電動機からの電流"></canvas><p class="md-cap">図は例：系統から 100、電動機から最初に 25 を足し、時定数 30 ms で減衰。</p></div>
+        <div class="md-col">
+          <p>誘導電動機は、事故で電圧が下がると、回転子に残った磁束で発電機のように電流を出す。大きさは始動電流と同じくらい（定格の 5〜7 倍）で、数サイクルで消える。</p>
+          <p>瞬時要素の検討と、遮断器の容量を決める最大の短絡電流（IEC 60909）では足す。寄与は数サイクル〜数百 ms で減り、大きな電動機ほど長く残る。限時要素が判定する時刻で残りが十分小さければ、省いてよい。</p>
+          <p class="key">事故を除去した後は、減速した電動機が再加速して大きな電流を取り、電圧の回復が遅れる。UVR が不要に動く原因になる。</p>
+        </div>
+      </div>
+    </div>
+    <div class="md-sub">
+      <h3>負荷の周波数特性</h3>
+      <p>周波数が 1 % 下がると、負荷は 1〜2 % 減る（電動機の回転が落ちるため）。この性質（負荷の自己制御性、<i>D</i> = 1〜2）は周波数の低下を和らげる。FR の検討では入れる。下の 5 の周波数の図も <i>D</i> = 1 で計算している。</p>
+    </div>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH4">
+    <h2 id="mdH4"><span class="md-n">4</span>線路：R を無視してよいか、C を無視してよいか</h2>
+    <div class="md-sub">
+      <h3>R を無視すると、短絡電流を大きく見積もる</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdLineCv" aria-label="R-X 平面のインピーダンス三角形"></canvas></div>
+          <div class="md-ctl">
+            <div class="md-segw"><span class="seglabel">線路の種類（%Z は基準 10 MVA・6.6 kV、1 km あたり）</span><div class="seg" id="mdLt" role="group" aria-label="線路の種類"><button data-v="oc" aria-pressed="true">架空 OC 120 mm²</button><button data-v="cv" aria-pressed="false">ケーブル CV 100 mm²</button><button data-v="tl" aria-pressed="false">X/R≈10 の線路</button></div></div>
+            <div class="param"><label for="mdLen"><span>こう長</span><output id="mdLenO"></output></label><input type="range" id="mdLen" min="0" max="10" step="0.1" value="3"></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>送電線は X が R の 10 倍以上あり、R を無視しても誤差は小さい。配電線の架空線は X/R が 2〜4、ケーブルは 1 を下回ることもある。電源側の %Z は 0.5 + j7 %（X/R = 14）とした。</p>
+          <div class="md-ros" id="mdLineRo"></div>
+          <p class="md-msg" id="mdLineMsg"></p>
+        </div>
+      </div>
+      <p class="key">最大の短絡電流（遮断器の容量・機器の強度）では、R を無視しても安全側の誤差で済む。最小の短絡電流（OCR が確実に動くか）では危険側の誤差になる。位相を見る継電器（67S・44）では、インピーダンス角そのものが変わる。X/R≈10 の線路は比べるための仮の値（大きさは架空線と同じ）。</p>
+    </div>
+    <div class="md-sub">
+      <h3>地絡では C が主役</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdCapCv" aria-label="自構内ケーブルのこう長と、構外の地絡で流れる充電電流"></canvas></div>
+          <div class="md-ctl">
+            <div class="md-segw"><span class="seglabel">ケーブルの対地静電容量（1 相、µF/km）</span><div class="seg" id="mdCc" role="group" aria-label="対地静電容量"><button data-v="0.3" aria-pressed="false">0.30</button><button data-v="0.325" aria-pressed="true">0.325（単線結線図）</button><button data-v="0.4" aria-pressed="false">0.40</button><button data-v="0.5" aria-pressed="false">0.50</button></div></div>
+            <div class="param"><label for="mdCl"><span>自構内ケーブルのこう長</span><output id="mdClO"></output></label><input type="range" id="mdCl" min="0" max="0.5" step="0.01" value="0.4"></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>非接地の 6.6 kV 系統で 1 線地絡すると、事故電流は健全相の対地静電容量 C を通って戻る。線路の R・X は、C のリアクタンス（数 kΩ）に比べて桁違いに小さいので無視してよい。逆に C は落としてはいけない。</p>
+          <div class="eq"><i>I</i><sub>g</sub> = 3ω<i>CE</i>　（<i>E</i> = 6600/√3 V、ω = 2π × 60）</div>
+          <p>単線結線図タブは、ケーブル 100 m あたり 0.14 A としている。これは <i>C</i> ≈ 0.325 µF/km に当たる。</p>
+          <div class="md-ros" id="mdCapRo"></div>
+        </div>
+      </div>
+      <p class="key">構外で完全地絡すると、自構内のケーブルの充電電流が ZCT を通る。方向のない地絡継電器（GR、整定 0.2 A）は、ケーブルが長いとこれで動いてしまう（もらい事故）。長いケーブルには地絡方向継電器（67G）を使う。</p>
+      <p>長い送電線は π 形（両端に C/2）で表す。軽負荷のときは充電電流で受電端の電圧が上がる（フェランチ効果）。距離継電器の地絡要素は、零相と正相のインピーダンスの違いを零相補償 <i>k</i><sub>0</sub> = (<i>Z</i><sub>0</sub> − <i>Z</i><sub>1</sub>)/(3<i>Z</i><sub>1</sub>) で補う。</p>
+    </div>
+    <div class="md-sub">
+      <h3>例題：受電点の三相短絡（%Z 法）</h3>
+      <p>単線結線図タブと同じ %Z（基準 10 MVA、引込ケーブル 100 m）で、受電点の三相短絡電流を出す。単線結線図のほうは負荷や自家発も入れて解いているので、値は少し違う。</p>
+      <div class="eq">%<i>Z</i> = (2 + j5) + (1 + j2) + (0.76 + j0.25) = 3.76 + j7.25 %<br>|%<i>Z</i>| = √(3.76² + 7.25²) = 8.17 %<br><i>I</i><sub>n</sub> = 10 MVA / (√3 × 6.6 kV) = 874.8 A<br><i>I</i><sub>s</sub> = <i>I</i><sub>n</sub> × 100 / |%<i>Z</i>| = 874.8 × 100 / 8.17 ≈ 10.7 kA</div>
+      <p>R を無視すると 874.8 × 100 / 7.25 ≈ 12.1 kA。約 13 % 大きく見積もる。</p>
+    </div>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH5">
+    <h2 id="mdH5"><span class="md-n">5</span>INV（インバータ電源）が入ると</h2>
+    <div class="md-sub">
+      <h3>事故電流は定格の 1 倍ほどで頭打ち</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdInvCv" aria-label="同期発電機と INV の事故電流（実効値）の時間変化"></canvas></div>
+          <div class="md-ctl">
+            <div class="param"><label for="mdVr"><span>発電機の端子の残電圧</span><output id="mdVrO"></output></label><input type="range" id="mdVr" min="0" max="0.95" step="0.01" value="0.5"></div>
+            <div class="param"><label for="mdOs"><span>OCR の整定（定格の何倍）</span><output id="mdOsO"></output></label><input type="range" id="mdOs" min="1.2" max="3" step="0.1" value="1.5"></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>同期発電機は磁束の慣性で、事故の直後に定格の数倍の電流を出す。INV（太陽光・蓄電池・多くの風力）は、半導体を守るため電流を制御で制限する。事故中も定格の 1〜1.5 倍までしか出さない（ここでは 1.1 倍）。</p>
+          <div class="md-ros" id="mdInvRo"></div>
+          <p class="md-note">どちらも定格 1.0 pu で運転中、0.1 s に事故、0.4 s に除去。同期機は事故前の負荷電流（力率 1）に事故分（90° 遅れ）を足した大きさ。事故点までのリアクタンスは残電圧から逆算した。INV は残電圧 20 % 未満でゲートブロックして止まり、除去後 0.2 s で戻る例。</p>
+        </div>
+      </div>
+      <p class="key">INV の事故電流は、過負荷と見分けがつかない。系統連系でも、逆変換装置を使う発電設備では、系統側の短絡を DSR ではなく UVR（電圧の低下）で検出する（同期発電機は DSR）。PCS の内部の事故は、PCS 自身の保護が受け持つ。INV は逆相電流をほとんど出さない制御が多く、逆相分で向きを見る方向要素が迷う。INV だけが電源の線路の端では、距離継電器の測距が不安定になる。</p>
+    </div>
+    <div class="md-sub">
+      <h3>慣性が減ると、周波数が速く落ちる</h3>
+      <div class="md-two">
+        <div class="md-col">
+          <div class="md-cv"><canvas id="mdFqCv" aria-label="電源脱落の後の周波数"></canvas></div>
+          <div class="md-ctl">
+            <div class="param"><label for="mdDp"><span>脱落した電源</span><output id="mdDpO"></output></label><input type="range" id="mdDp" min="0.01" max="0.1" step="0.005" value="0.05"></div>
+            <div class="param"><label for="mdSh"><span>INV の比率</span><output id="mdShO"></output></label><input type="range" id="mdSh" min="0" max="0.8" step="0.05" value="0.5"></div>
+          </div>
+        </div>
+        <div class="md-col">
+          <p>電源が脱落すると、残った発電機の回転エネルギーが不足分を補い、周波数が下がる。下がる速さ（RoCoF）は系統の慣性定数 <i>H</i> に反比例する。INV は回転体を持たないので、制御で加えない限り、慣性も調速機の応答も持たない。</p>
+          <div class="eq">2<i>H</i> d(Δ<i>f</i>/<i>f</i><sub>0</sub>)/d<i>t</i> = Δ<i>P</i><sub>m</sub> − Δ<i>P</i><sub>L</sub> − <i>D</i>·Δ<i>f</i>/<i>f</i><sub>0</sub><br>RoCoF（直後）= −Δ<i>P</i>·<i>f</i><sub>0</sub> / (2<i>H</i>)</div>
+          <div class="md-ros" id="mdFqRo"></div>
+          <p class="md-note">系統を 1 台にまとめた周波数モデル。同期機だけなら <i>H</i> = 5 s、調速機は 1 次遅れ 5 s・速度調定率 5 %、<i>D</i> = 1。INV の比率の分だけ、慣性と調速機の応答を減らした。薄い線は INV 0 %。</p>
+        </div>
+      </div>
+      <p class="key">INV が増えると、周波数の落ち方が速くなり、最低周波数も下がる。FR（UFR）が早く、深く動く。対策は、周波数変化率（RoCoF）を見るリレー、INV の疑似慣性、グリッドフォーミング（GFM）の制御。</p>
+    </div>
+    <div class="md-sub">
+      <h3>事故のときに止まらない（FRT）、単独運転を見つける</h3>
+      <p>高圧配電線に連系する太陽光は、事故で電圧が下がっても運転を続けることが求められる（FRT 要件）。一斉に止まると、系統全体で電源が足りなくなるため。数値は系統連系規程の版と電源の種類で違う。ここでは 2025 年時点の電力会社の技術要件から、高圧・三相の太陽光の例を示す。</p>
+      <ul class="md-ul">
+        <li>三相短絡を想定した電圧低下：残電圧 20 % 以上なら運転を続ける。20 % 未満ではゲートブロックで出力を止めてもよい。どちらも電圧低下が 0.3 s 以下のとき、電圧の復帰後 0.1 s 以内（20 % 未満なら 0.2 s 以内）に、事故前の出力の 80 % 以上へ戻す。</li>
+        <li>二相短絡を想定した電圧低下：残電圧 52 % 以上・位相変化 41° 以下・0.3 s 以下なら運転を続け、電圧の復帰後 0.1 s 以内に 80 % 以上へ戻す。</li>
+        <li>周波数の変化：ステップ状に +1.0 Hz（3 サイクル）、ランプ状に ±2 Hz/s で変わっても運転を続ける。60 Hz 系統で 57.0〜61.8 Hz の範囲。</li>
+        <li>単独運転の検出：受動的方式（電圧位相の跳躍・周波数変化率など）は 0.5 s 以内、能動的方式（無効電力の変動などを加えて反応を見る）は 0.5〜1 s 程度（機種の例）。どちらも配電線の再閉路（約 1 分）より前に解列する。</li>
+      </ul>
+      <p class="md-note">出典：中部電力パワーグリッド「系統連系技術要件（高圧）」（2025 年版）。2017 年の要件とは、電圧低下の継続時間や出力の戻し方の数値が違う。使うときは、適用する版と電力会社の要件を確かめる。</p>
+    </div>
+  </section>
+
+  <section class="card md-sec" aria-labelledby="mdH6">
+    <h2 id="mdH6"><span class="md-n">6</span>計算の手順とツール</h2>
+    <div class="md-steps" id="mdSteps"></div>
+    <div class="md-sub">
+      <h3>ツール</h3>
+      <div class="md-scroll"><table class="md-tbl" id="mdTools"></table></div>
+      <p class="md-note">商用ソフトの機能とライセンスは版で変わる。使う前に各ツールの説明書で確かめる。</p>
+    </div>
+  </section>
+</section>
+
+<script>
+"use strict";
+$('viewSld').after($('viewModel'));
+
+/* ---------- 共通の描画部品 ---------- */
+const MDCOL=()=>{ const cs=getComputedStyle(document.documentElement), g=k=>cs.getPropertyValue('--'+k).trim();
+  return {ink:g('ink'),muted:g('muted'),rule:g('rule'),sunk:g('sunk'),surface:g('surface'),bg:g('bg'),live:g('live'),fault:g('fault'),target:g('target'),amber:g('amber'),ok:g('ok'),s1:g('s1'),s2:g('s2'),s3:g('s3'),mono:g('f-mono')||'monospace',body:g('f-body')||'sans-serif'}; };
+const mdClamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+/* canvas を親の幅に合わせ、devicePixelRatio で鮮明に描く */
+function mdCv(id, hOf){ const cv=$(id), W=Math.max(260, Math.round(cv.parentElement.clientWidth)), H=Math.round(hOf(W)), dpr=Math.min(2, window.devicePixelRatio||1);
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  cv.style.height=H+'px'; const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H); c.lineJoin='round'; c.lineCap='round';
+  return {c,W,H,K:MDCOL()}; }
+function mdStep(r){ const raw=r/4, p=Math.pow(10,Math.floor(Math.log10(raw))), m=raw/p; return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p; }
+function mdTicks(a,b){ const s=mdStep(b-a), out=[]; for(let v=Math.ceil(a/s-1e-9)*s; v<=b+1e-9; v+=s) out.push(+v.toFixed(10)); return out; }
+/* 軸と目盛。o.xlog で横軸を対数に */
+function mdAxes(c,K,b,xr,yr,o={}){ const lx=!!o.xlog, l0=lx?Math.log10(xr[0]):0, l1=lx?Math.log10(xr[1]):0;
+  const X=v=> b.x + (lx ? (Math.log10(v)-l0)/(l1-l0) : (v-xr[0])/(xr[1]-xr[0]))*b.w, Y=v=> b.y + b.h - (v-yr[0])/(yr[1]-yr[0])*b.h;
+  c.save(); c.lineWidth=1; c.strokeStyle=K.rule; c.font=`500 11px ${K.mono}`; c.fillStyle=K.muted;
+  (o.xt||[]).forEach(t=>{ const x=X(t); c.beginPath(); c.moveTo(x,b.y); c.lineTo(x,b.y+b.h); c.stroke(); const far=x>b.x+b.w-18; c.textAlign=far?'right':'center'; c.textBaseline='top'; c.fillText(o.xf?o.xf(t):String(t), far?x+6:x, b.y+b.h+4); });
+  (o.yt||[]).forEach(t=>{ const y=Y(t); c.beginPath(); c.moveTo(b.x,y); c.lineTo(b.x+b.w,y); c.stroke(); c.textAlign='right'; c.textBaseline='middle'; c.fillText(o.yf?o.yf(t):String(t), b.x-5, y); });
+  c.strokeStyle=K.ink; c.lineWidth=1.2; c.beginPath(); c.moveTo(b.x,b.y); c.lineTo(b.x,b.y+b.h); c.lineTo(b.x+b.w,b.y+b.h); c.stroke();
+  c.font=`700 12px ${K.body}`; c.fillStyle=K.muted;
+  if(o.xl){ c.textAlign='right'; c.textBaseline='top'; c.fillText(o.xl, b.x+b.w, b.y+b.h+18); }
+  if(o.yl){ c.textAlign='left'; c.textBaseline='bottom'; c.fillText(o.yl, Math.max(2,b.x-40), b.y-9); }
+  c.restore(); return {X,Y}; }
+function mdCurve(c,X,Y,f,t0,t1,n,col,w,dash,log){ c.save(); c.strokeStyle=col; c.lineWidth=w||2; if(dash) c.setLineDash(dash); c.beginPath();
+  for(let i=0;i<=n;i++){ const t= log ? t0*Math.pow(t1/t0,i/n) : t0+(t1-t0)*i/n, x=X(t), y=Y(f(t)); i?c.lineTo(x,y):c.moveTo(x,y); } c.stroke(); c.restore(); }
+function mdHline(c,b,y,col,dash,w){ c.save(); c.strokeStyle=col; c.lineWidth=w||1.5; if(dash) c.setLineDash(dash); c.beginPath(); c.moveTo(b.x,y); c.lineTo(b.x+b.w,y); c.stroke(); c.restore(); }
+function mdVline(c,b,x,col,dash,w){ c.save(); c.strokeStyle=col; c.lineWidth=w||1.2; if(dash) c.setLineDash(dash); c.beginPath(); c.moveTo(x,b.y); c.lineTo(x,b.y+b.h); c.stroke(); c.restore(); }
+function mdText(c,K,s,x,y,col,al,bl,font){ c.save(); c.font=font||`600 12px ${K.body}`; c.fillStyle=col; c.textAlign=al||'left'; c.textBaseline=bl||'middle'; c.fillText(s,x,y); c.restore(); }
+/* 文字の下に面の色を敷いて読みやすくする */
+function mdTag(c,K,s,x,y,col,al,font){ c.save(); c.font=font||`700 11px ${K.body}`; const w=c.measureText(s).width+8, x0= al==='right'?x-w : al==='center'?x-w/2 : x;
+  c.fillStyle=K.sunk; c.globalAlpha=0.88; c.fillRect(x0,y-8,w,16); c.globalAlpha=1; c.fillStyle=col; c.textAlign='left'; c.textBaseline='middle'; c.fillText(s,x0+4,y); c.restore(); }
+function mdDot(c,x,y,r,col){ c.save(); c.fillStyle=col; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); c.restore(); }
+function mdClip(c,b){ c.save(); c.beginPath(); c.rect(b.x,b.y-1,b.w+1,b.h+2); c.clip(); }
+const mdRo=(l,v,s,cls)=>`<div class="ro"><span>${l}</span><b${cls?` class="${cls}"`:''}>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+const mdF=(v,d=2)=>v.toFixed(d);
+function mdSeg(id,on){ const el=$(id); el.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x===b)); on(b.dataset.v); }); }
+function mdSegSet(id,v){ $(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x.dataset.v===v)); }
+
+/* ---------- 0. 時間の地図と継電器の選択 ---------- */
+const MD_PHEN=[['雷・開閉サージ',1e-6,1e-3],['電磁過渡（直流分・CT 飽和・励磁突入）',1e-3,0.5],['電気機械（発電機の動揺）',0.1,10],['周波数・調速機',1,60],['需給・AGC',60,3600]];
+const MD_ANA=[['EMT（瞬時値）',1e-6,1],['RMS（実効値・位相）',0.01,60],['周波数モデル',1,600]];
+const MD_RELT=[
+  {l:'87 差動',pts:[[0.03,'瞬時']],ids:['dfr','rdfr']},
+  {l:'44 距離 第1段・第2段',pts:[[0.03,'Z1'],[0.4,'Z2']],ids:['dr']},
+  {l:'51 過電流 瞬時・限時',pts:[[0.05,'瞬時']],rg:[0.3,2],ids:['ocr']},
+  {l:'67S 短絡方向',pts:[[0.2,'']],ids:['dsr']},
+  {l:'51G・67G 地絡',rg:[0.2,1],ids:['ocgr','dgr']},
+  {l:'64 地絡過電圧',pts:[[0.5,'']],ids:['ovgr']},
+  {l:'67P 逆電力',pts:[[0.5,'']],ids:['rpr']},
+  {l:'27・59 電圧',pts:[[1,'']],ids:['uvr','ovr']},
+  {l:'95 周波数',rg:[0.5,5],ids:['fr']},
+  {l:'再閉路（送電線・配電線）',pts:[[1,'送電線'],[60,'配電線']],ids:[],rc:true},
+];
+const MD_TT=[[1e-6,'1 µs'],[1e-5,'10 µs'],[1e-4,'0.1 ms'],[1e-3,'1 ms'],[1e-2,'10 ms'],[0.1,'0.1 s'],[1,'1 s'],[10,'10 s'],[60,'1 分'],[600,'10 分'],[3600,'1 時間']];
+function mdMapSvg(sel){ const W=784, x0=190, x1=748, L0=Math.log10(1e-6), L1=Math.log10(3600), X=t=>x0+(Math.log10(t)-L0)/(L1-L0)*(x1-x0), rh=20;
+  const rel=MD_RELT.find(r=>r.ids.includes(sel)); const ts=rel?[...(rel.pts||[]).map(p=>p[0]), ...(rel.rg||[])]:[];
+  const covers=(a,b)=>ts.some(t=>t>=a && t<=b);
+  let y=26, s='';
+  const head=t=>{ s+=`<text class="mm-gh" x="8" y="${y+12}">${t}</text>`; y+=18; };
+  let body=''; head('現象');
+  MD_PHEN.forEach(([l,a,b])=>{ s+=`<rect class="mm-ph${covers(a,b)?' mm-cover':''}" x="${X(a)}" y="${y+3}" width="${X(b)-X(a)}" height="${rh-6}" rx="3"/><text class="mm-bt" x="${X(a)+6}" y="${y+14}">${l}</text>`; y+=rh; });
+  y+=6; head('解析の方法');
+  MD_ANA.forEach(([l,a,b])=>{ s+=`<rect class="mm-an${covers(a,b)?' mm-cover':''}" x="${X(a)}" y="${y+3}" width="${X(b)-X(a)}" height="${rh-6}" rx="3"/><text class="mm-bt" x="${X(a)+6}" y="${y+14}">${l}</text>`; y+=rh; });
+  y+=4; s+=`<line class="mm-snap" x1="${x0}" y1="${y+10}" x2="${x1}" y2="${y+10}"/><text class="mm-bt" x="${x0+6}" y="${y+6}">潮流・短絡計算：時間を持たない断面。短絡計算は X''d・X'd の選び方で時刻を決める</text>`; y+=rh+2;
+  y+=6; head('継電器が動くまで（整定の例）');
+  MD_RELT.forEach(r=>{ const on=r.ids.includes(sel); let g=`<g class="${on?'mm-on':''}">`;
+    if(on) g+=`<rect class="mm-hl" x="2" y="${y}" width="${W-4}" height="${rh}" rx="3"/>`;
+    g+=`<text class="mm-lab" x="8" y="${y+14}">${r.l}</text>`;
+    if(r.rg) g+=`<rect class="mm-rr" x="${X(r.rg[0])}" y="${y+5}" width="${X(r.rg[1])-X(r.rg[0])}" height="${rh-10}" rx="5"/>`;
+    (r.pts||[]).forEach(([t,lb])=>{ const x=X(t); g+= r.rc ? `<path class="mm-rc" d="M${x} ${y+4} l6 6 -6 6 -6 -6z"/>` : `<circle class="mm-rel" cx="${x}" cy="${y+10}" r="5"/>`; if(lb) g+=`<text class="mm-tl" x="${x+9}" y="${y+14}">${lb}</text>`; });
+    body+=g+'</g>'; y+=rh; });
+  let grid=''; MD_TT.forEach(([t])=>{ const x=X(t); grid+=`<line class="mm-tick" x1="${x}" y1="22" x2="${x}" y2="${y}"/>`; });
+  const H=y+6;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="時間の地図。現象、解析の方法、継電器の動作時間を対数の時間軸に並べた">`+
+    `<line class="mm-ax" x1="${x0}" y1="20" x2="${x1}" y2="20"/>`+MD_TT.map(([t,l])=>`<text class="mm-tl" x="${X(t)}" y="14" text-anchor="middle">${l}</text>`).join('')+grid+s+body+`</svg>`; }
+
+const MD_REL={
+  ocr:{an:'三相短絡と 2 線短絡の電流（%Z 法・対称座標法）。最大と最小の両方を出す。協調は時間−電流特性の図で確かめる。',
+    gen:'瞬時要素は X\'\'d、限時要素は X\'d の背後の定電圧源。系統側は %Z と電圧源で表す。',
+    load:'事故電流の計算では無視してよい。大きな電動機は、事故直後の数サイクルだけ足す。限時要素の整定値は最大の負荷電流を基準に決め、電動機の始動電流は短時間なので反限時の時限で見送る。瞬時要素は始動電流・励磁突入電流より上にする。',
+    line:'R を入れた |Z| で計算する。配電線は X/R が 1〜3 なので、R を無視すると電流を 5〜40 % 大きく見積もり、感度の評価が甘くなる。',
+    inv:'事故電流は定格の 1〜1.5 倍で頭打ち。INV だけが電源の区間では、OCR の感度が足りない。'},
+  ocgr:{an:'1 線地絡の電流。非接地系では、対地静電容量 C で地絡電流が決まる（Ig = 3ωCE。事故抵抗があると小さくなる）。',
+    gen:'電源と変圧器のインピーダンスは無視してよい。C のリアクタンス（数 kΩ）に比べて桁違いに小さい。',
+    load:'無視してよい。', line:'R・X は無視してよい。C（ケーブルのこう長）が主役。',
+    inv:'地絡電流はほとんど変わらない（C で決まるため）。',
+    note:'自構内の C が大きいと、構外の地絡で自構内の充電電流が整定値を超え、不要に動く（もらい事故）。そのときは 67G（DGR）にする。'},
+  ovr:{an:'潮流計算（定常の電圧）と、負荷遮断・AVR の故障などを追う RMS の動的解析。',
+    gen:'AVR（励磁系）のモデルが要る。電圧は界磁と負荷で決まる。',
+    load:'負荷が急に減ると電圧が上がる。負荷の電圧特性（ZIP）も入れる。',
+    line:'R を無視しない。電圧の変化は ΔV ≈ (R·P + X·Q)/V で、配電線では R の項が大きい。逆潮流による電圧上昇もこの式で見る。',
+    inv:'太陽光の逆潮流で、配電線の末端の電圧が上がる。出力抑制や力率一定制御などの電圧上昇抑制をモデルに入れる。'},
+  ovgr:{an:'1 線地絡の零相電圧。零相回路は C・事故抵抗 Rf・GPT の制限抵抗でできる。',
+    gen:'無視してよい。', load:'無視してよい。', line:'C が主役。R・X は無視してよい。', inv:'影響は小さい。',
+    note:'平常時も 3 相の C の不平衡で、少し V0 が出ている。整定値はそれより上にする。'},
+  uvr:{an:'RMS の動的解析（電圧の低下と回復）。事故中の電圧だけなら %Z 法でも出せる（事故点からの距離で決まる）。',
+    gen:'X\'d と AVR。', load:'定電力の負荷と電動機が多いと、電圧の回復が遅れる。負荷のモデルで結果が大きく変わる代表。',
+    line:'R・X ともに入れる。', inv:'FRT（事故時の運転継続）の動きを入れる。電圧が下がると無効電流を出す制御は、電圧の回復を助ける。'},
+  dsr:{an:'短絡電流の大きさと位相（対称座標法を複素数で）。',
+    gen:'自家発から系統側の事故点へ流れる電流を見るので、自家発の X\'\'d・X\'d を入れる。', load:'無視してよい。',
+    line:'位相に R が効く。X/R が小さい配電線では、インピーダンス角が 60° 前後まで下がる。',
+    inv:'INV の電流の位相は制御で決まり、同期機の想定どおりには出ない。系統連系でも、逆変換装置を使う発電設備は、系統側の短絡を UVR で検出する。'},
+  dgr:{an:'1 線地絡の I0 と V0 の位相（零相回路を複素数で）。',
+    gen:'無視してよい。', load:'無視してよい。', line:'自構内ケーブルの C が、構外の事故で流れる I0 の大きさを決める。R・X は無視してよい。', inv:'影響は小さい。',
+    note:'構内の事故と構外の事故で I0 の向きが逆になることを、位相まで計算して確かめる。'},
+  dfr:{an:'内部事故と外部事故の両方。外部事故の通過電流の最大値（%Z 法）で CT の誤差を見積もる。CT 飽和や変圧器の励磁突入電流は、EMT（瞬時値）でないと見えない。',
+    gen:'通過電流の最大値には X\'\'d を使う。', load:'無視してよい。',
+    line:'変圧器を守るときは、巻数比・タップ・Δ-Y 結線の 30° の位相ずれを補正する。',
+    inv:'差を見るので、電源の強さに左右されにくい。ただし内部事故の電流が小さいと、感度が足りない。'},
+  dr:{an:'事故中の V/I（短絡計算を複素数で）。線路は正相と零相のインピーダンス（地絡要素は零相補償 k0）。',
+    gen:'両端の電源の強さ。途中から電流が流れ込むと、見かけのインピーダンスが大きくなる（インフィード）。',
+    load:'重負荷のとき、負荷のインピーダンスが動作域に入らないか確かめる（負荷の侵入）。',
+    line:'R を無視しない（事故抵抗・アーク抵抗で R の方向にずれる）。長い送電線は π 形。',
+    inv:'電流が小さく、V/I がぶれる。INV だけが電源の端では、測距が不安定。',
+    note:'電力動揺で見かけのインピーダンスが動き、同期を保つ安定な動揺でも円に入ることがある。動揺方程式で軌跡を出し、電力動揺ブロックを整定する。同期を失う脱調には、決めた場所で系統を分ける脱調分離を別に用意する。'},
+  fr:{an:'周波数の応答（RMS の動的解析、または系統を 1 台の発電機にまとめた周波数モデル）。',
+    gen:'慣性定数 H と調速機が主役。', load:'周波数特性（周波数が 1 % 下がると負荷が 1〜2 % 減る）。',
+    line:'無視してよい（系統を 1 つの母線にまとめる）。', inv:'慣性を持たないので系統の H が下がり、周波数が速く落ちる。疑似慣性・グリッドフォーミング（GFM）の制御で補う。'},
+  rpr:{an:'潮流計算（定常）。自家発の出力と構内の負荷の差を見る。',
+    gen:'出力 P 一定のモデルで十分。', load:'負荷が急に減ると逆潮流になる。負荷の変動の幅を見積もる。',
+    line:'無視してよい（構内）。', inv:'逆潮流なしの契約で連系するときに使う（太陽光でも同じ）。'},
+};
+MD_REL.rdfr=MD_REL.dfr;
+let mdSel='ocr';
+function mdPaintPick(){ $('mdMap').innerHTML=mdMapSvg(mdSel);
+  $('mdPick').querySelectorAll('.md-rb').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===mdSel));
+  const r=RELAYS.find(x=>x.id===mdSel), d=MD_REL[mdSel];
+  const rows=[['解析の方法',d.an],['発電機・系統',d.gen],['負荷',d.load],['線路',d.line],['INV が入ると',d.inv]]; if(d.note) rows.push(['注意',d.note]);
+  $('mdCard').innerHTML=`<h3>${r.no} ${r.name}（${r.ab}）を計算するなら</h3><dl class="md-rows">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl><button class="ghost" data-go="${mdSel}">この継電器の動きを見る</button>`; }
+
+/* ---------- 1. 細かさのはしご ---------- */
+const MD_LH=['手計算','短絡計算','動特性（RMS）','瞬時値（EMT）'];
+const MD_LAD=[
+  ['発電機',[['無限大母線','電圧が変わらない電源。潮流の当たり'],['X\'\'d・X\'d の背後の定電圧源','短絡電流。継電器の時刻で選ぶ'],['古典モデル','動揺方程式。安定度・脱調'],['詳細モデル','d-q 軸・AVR・調速機。電圧回復・周波数']]],
+  ['負荷',[['無視','短絡電流の計算'],['定インピーダンス','電圧が大きく下がるとき'],['ZIP・指数形','潮流・電圧の検討'],['電動機の動特性','再加速・電圧回復・UVR']]],
+  ['線路',[['X だけ','送電線の当たり（X/R 大）'],['R + jX','配電線・ケーブル'],['π 形（充電容量）','長い送電線・地絡（C）'],['分布定数','進行波・雷・開閉サージ']]],
+  ['INV',[['無視','比率が小さいとき'],['電流源（1〜1.5 倍で頭打ち）','短絡電流・感度'],['制御込み','FRT・PLL・電流制限'],['スイッチング','高調波・制御の安定性']]],
+];
+function mdPaintLadder(){ let h=`<div class="md-lrow md-lhrow"><span></span>${MD_LH.map(x=>`<span class="md-lhd">${x}</span>`).join('')}</div>`;
+  MD_LAD.forEach(([nm,cells])=>{ h+=`<div class="md-lrow"><span class="md-lh">${nm}</span>${cells.map(([t,u],i)=>`<div class="md-step l${i+1}"><i class="md-tagm">${MD_LH[i]}</i><b>${t}</b><span>${u}</span></div>`).join('')}</div>`; });
+  $('mdLadder').innerHTML=h; }
+
+/* ---------- 2a. 発電機の短絡電流 ---------- */
+const MDG={x2:0.2,x1:0.3,x0:1.5,T2o:0.04,T1o:5,w:2*Math.PI*60,Ec:2};
+const MG={xe:0, al:0, ov:true, avr:false};
+function mdGenK(xe){ const X2=MDG.x2+xe, X1=MDG.x1+xe, X=MDG.x0+xe, R=MDG.x2/40+xe/10;
+  return {X2,X1,X, T2:MDG.T2o*X2/X1, T1:MDG.T1o*X1/X, Ta:X2/(MDG.w*R)}; }
+/* 交流分の実効値（pu）。AVR ありは界磁電圧を頂上 2 倍まで一気に上げたとして、増分が T' で立ち上がる */
+function mdIac(g,t,avr){ let v=(1/g.X2-1/g.X1)*Math.exp(-t/g.T2)+(1/g.X1-1/g.X)*Math.exp(-t/g.T1)+1/g.X; if(avr) v+=(MDG.Ec-1)/g.X*(1-Math.exp(-t/g.T1)); return v; }
+const MD_GT=[[0.02,'瞬時要素（約 1 サイクル）','X2'],[0.3,'限時要素','X1'],[2,'数秒後','X']];
+function mdDrawGen(){ const {c,W,H,K}=mdCv('mdGenCv', W=>mdClamp(W*0.78,380,540)); const g=mdGenK(MG.xe), al=MG.al*Math.PI/180, I2=1/g.X2;
+  const L=46, R=W-12, hTop=Math.round((H-70)*0.45), b1={x:L,y:30,w:R-L,h:hTop}, b2={x:L,y:30+hTop+56,w:R-L,h:H-30-hTop-56-36};
+  /* 上：事故直後 0.2 s の瞬時値 */
+  const pk=Math.SQRT2*I2*2*1.03, yt=mdTicks(-pk,pk).filter(v=>Math.abs(v)<pk*0.98);
+  let A=mdAxes(c,K,b1,[0,0.2],[-pk,pk],{xt:[0,0.05,0.1,0.15,0.2],xf:t=>t+' s',yt,yl:'瞬時値 i (pu)'});
+  mdClip(c,b1);
+  const env=t=>Math.SQRT2*mdIac(g,t,MG.avr), dc=t=>-Math.SQRT2*I2*Math.cos(al)*Math.exp(-t/g.Ta);
+  mdCurve(c,A.X,A.Y,env,0,0.2,200,K.muted,1.2,[4,4]); mdCurve(c,A.X,A.Y,t=>-env(t),0,0.2,200,K.muted,1.2,[4,4]);
+  mdCurve(c,A.X,A.Y,dc,0,0.2,200,K.amber,2);
+  mdCurve(c,A.X,A.Y,t=>env(t)*Math.cos(MDG.w*t+al)+dc(t),0,0.2,1400,K.s1,1.6);
+  c.restore();
+  mdTag(c,K,'交流分の包絡線',b1.x+b1.w-4,b1.y+10,K.muted,'right'); mdTag(c,K,'直流分',b1.x+b1.w-4,b1.y+28,K.amber,'right'); mdTag(c,K,'電流 i(t)',b1.x+b1.w-4,b1.y+46,K.s1,'right');
+  /* 下：交流分の実効値（対数の時間軸） */
+  const ymax=Math.max(I2, mdIac(g,5,MG.avr))*1.15;
+  A=mdAxes(c,K,b2,[0.005,5],[0,ymax],{xlog:true,xt:[0.01,0.1,1],xf:t=>t<0.1?(t*1000)+' ms':t+' s',yt:mdTicks(0,ymax).filter(v=>v<ymax*0.97),xl:'時間（対数）'});
+  mdText(c,K,'交流分の実効値 (pu)',Math.max(2,b2.x-40),b2.y-30,K.muted,'left','middle',`700 12px ${K.body}`);
+  mdClip(c,b2);
+  if(MG.ov){ [[I2,K.target,"E/X''d"],[1/g.X1,K.amber,"E/X'd"],[1/g.X,K.ok,'E/Xd']].forEach(([v,col])=>mdHline(c,b2,A.Y(v),col,[6,4],1.6)); }
+  MD_GT.forEach(([t])=>mdVline(c,b2,A.X(t),K.muted,[2,4],1));
+  mdCurve(c,A.X,A.Y,t=>mdIac(g,t,MG.avr),0.005,5,240,K.ink,2.6,null,true);
+  MD_GT.forEach(([t])=>mdDot(c,A.X(t),A.Y(mdIac(g,t,MG.avr)),4.5,K.ink));
+  c.restore();
+  if(MG.ov){ const labs=[[I2,K.target,"E/X''d"],[1/g.X1,K.amber,"E/X'd"],[1/g.X,K.ok,'E/Xd']]; let last=-99; labs.forEach(([v,col,s])=>{ let y=A.Y(v)-9; if(Math.abs(y-last)<16) y=last+16; last=y; mdTag(c,K,s+' '+mdF(v),b2.x+b2.w-4,y,col,'right'); }); }
+  MD_GT.forEach(([t,l],i)=>mdTag(c,K,W<560?l.replace(/（.*）/,''):l,A.X(t)+(i===2?-4:4),b2.y-10,K.muted,i===2?'right':'left',`600 11px ${K.body}`));
+  /* 読み取り */
+  const ref={X2:g.X2,X1:g.X1,X:g.X}, nm={X2:"X''d",X1:"X'd",X:'Xd'};
+  $('mdGenRo').innerHTML=MD_GT.map(([t,l,k])=>{ const v=mdIac(g,t,MG.avr), m=1/ref[k]; return mdRo(`${t} s・${l.replace(/（.*）/,'')}`, mdF(v)+' pu', `${nm[k]} モデル ${mdF(m)} pu の ${Math.round(v/m*100)} %`); }).join('')
+    + mdRo('時定数', `T'' ${Math.round(g.T2*1000)} ms`, `T' ${mdF(g.T1)} s・直流分 Ta ${Math.round(g.Ta*1000)} ms`);
+  $('mdXeO').textContent=mdF(MG.xe)+' pu'; $('mdAlO').textContent=MG.al+'°（直流分 '+Math.round(Math.cos(al)*100)+' %）';
+  const r2=mdIac(g,0.3,MG.avr)*g.X1, rr=I2/(1/g.X1);
+  $('mdGenMsg').textContent = (MG.xe<0.3 ? `事故点が発電機に近い。最初の電流は X'd の値の ${mdF(rr)} 倍あり、時刻によって大きく変わる。継電器が判定する時刻に合ったリアクタンスを選ぶ。` : `事故点が遠いので、X''d と X'd の差は ${Math.round((rr-1)*100)} % まで縮んだ。短絡計算は一定のリアクタンスで十分に近い。`)
+    + (MG.avr ? ' AVR が界磁を強めるので、数秒後の電流は Xd だけの値より大きく残る。' : ` 0.3 s では X'd モデルの ${Math.round(r2*100)} %。数秒後は Xd の値へ下がる（AVR なし）。`); }
+
+/* ---------- 2b. 動揺方程式と等面積法 ---------- */
+const MS={tc:0.15,H:5}; const MDS={Pm:1,P0:2,Pf:0.4,Pp:1.5,w0:2*Math.PI*60}; const mdCctCache={};
+function mdSwSim(tc,H,T,keep){ const dt=0.0005, d0=Math.asin(MDS.Pm/MDS.P0); let d=d0, om=0, dc=null, dmax=d0; const tr=keep?[[0,d]]:null;
+  for(let i=1;i*dt<=T+1e-9;i++){ const t=i*dt, Pmax= t<=tc ? MDS.Pf : MDS.Pp; om+=(MDS.Pm-Pmax*Math.sin(d))*MDS.w0/(2*H)*dt; d+=om*dt;
+    if(dc===null && t>=tc) dc=d; if(d>dmax) dmax=d; if(keep && i%10===0) tr.push([t,d]); if(d>Math.PI) return {stable:false,dc:dc??d,dmax:d,tr,tu:t}; }
+  return {stable:true,dc,dmax,tr}; }
+function mdCct(H){ if(mdCctCache[H]) return mdCctCache[H]; let lo=0.01, hi=1.2; for(let k=0;k<32;k++){ const m=(lo+hi)/2; if(mdSwSim(m,H,4).stable) lo=m; else hi=m; } return (mdCctCache[H]=lo); }
+function mdDrawSwing(){ const s=mdSwSim(MS.tc,MS.H,3,true), cct=mdCct(MS.H), deg=v=>v*180/Math.PI;
+  /* 左：δ(t) */
+  let {c,W,H,K}=mdCv('mdSwD', W=>mdClamp(W*0.7,230,320)); let b={x:44,y:30,w:W-56,h:H-68};
+  let A=mdAxes(c,K,b,[0,3],[0,180],{xt:[0,0.5,1,1.5,2,2.5,3],xf:t=>t+'',yt:[0,30,60,90,120,150,180],yl:'相差角 δ (°)',xl:'時間 (s)'});
+  c.save(); c.fillStyle=K.fault; c.globalAlpha=0.12; c.fillRect(A.X(0),b.y,A.X(MS.tc)-A.X(0),b.h); c.restore();
+  mdTag(c,K,'事故中',A.X(0)+3,b.y+10,K.fault);
+  mdClip(c,b); c.save(); c.strokeStyle=s.stable?K.s1:K.fault; c.lineWidth=2.4; c.beginPath(); s.tr.forEach(([t,d],i)=>{ const x=A.X(t), y=A.Y(deg(d)); i?c.lineTo(x,y):c.moveTo(x,y); }); c.stroke(); c.restore(); c.restore();
+  if(!s.stable) mdTag(c,K,`脱調（${mdF(s.tu,2)} s に 180° を超える）`,b.x+b.w-4,b.y+12,K.fault,'right');
+  /* 右：P-δ と等面積 */
+  ({c,W,H,K}=mdCv('mdSwP', W=>mdClamp(W*0.7,230,320))); b={x:40,y:30,w:W-52,h:H-68};
+  A=mdAxes(c,K,b,[0,180],[0,2.2],{xt:[0,30,60,90,120,150,180],yt:[0,0.5,1,1.5,2],yl:'電力 P (pu)',xl:'相差角 δ (°)'});
+  const d0=Math.asin(MDS.Pm/MDS.P0), du=Math.PI-Math.asin(MDS.Pm/MDS.Pp), dc=Math.min(s.dc,Math.PI), d2=s.stable?s.dmax:du;
+  const fill=(f1,f2,a,bb,col)=>{ c.save(); c.fillStyle=col; c.globalAlpha=0.3; c.beginPath(); const n=60; for(let i=0;i<=n;i++){ const d=a+(bb-a)*i/n; const x=A.X(deg(d)), y=A.Y(f1(d)); i?c.lineTo(x,y):c.moveTo(x,y); } for(let i=n;i>=0;i--){ const d=a+(bb-a)*i/n; c.lineTo(A.X(deg(d)),A.Y(f2(d))); } c.closePath(); c.fill(); c.restore(); };
+  fill(()=>MDS.Pm,d=>MDS.Pf*Math.sin(d),d0,dc,K.fault);
+  if(dc<du) fill(d=>MDS.Pp*Math.sin(d),()=>MDS.Pm,dc,d2,K.ok);
+  mdCurve(c,A.X,A.Y,d=>MDS.P0*Math.sin(d*Math.PI/180),0,180,120,K.muted,1.4,[5,4]);
+  mdCurve(c,A.X,A.Y,d=>MDS.Pf*Math.sin(d*Math.PI/180),0,180,120,K.fault,2);
+  mdCurve(c,A.X,A.Y,d=>MDS.Pp*Math.sin(d*Math.PI/180),0,180,120,K.s1,2);
+  mdHline(c,b,A.Y(MDS.Pm),K.ink,[2,3],1.4);
+  mdTag(c,K,'事故前',A.X(90),A.Y(2.0)-10,K.muted,'center'); mdTag(c,K,'除去後',A.X(90),A.Y(1.5)-10,K.s1,'center'); mdTag(c,K,'事故中',A.X(90),A.Y(0.4)-10,K.fault,'center'); mdTag(c,K,'Pm',b.x+b.w-4,A.Y(MDS.Pm)-9,K.ink,'right');
+  mdTag(c,K,'A1',A.X(deg((d0+dc)/2)),A.Y(0.75),K.fault,'center');
+  if(dc<du) mdTag(c,K,'A2',A.X(deg((dc+d2)/2)),A.Y(1.12),K.ok,'center');
+  [[d0,'δ0'],[dc,'δc']].forEach(([d,l])=>{ mdVline(c,b,A.X(deg(d)),K.muted,[2,3],1); mdText(c,K,l,A.X(deg(d))+3,b.y+b.h-10,K.muted,'left','middle',`600 11px ${K.mono}`); });
+  mdVline(c,b,A.X(deg(du)),K.fault,[2,3],1); mdText(c,K,'δu',A.X(deg(du))+3,b.y+b.h-10,K.fault,'left','middle',`600 11px ${K.mono}`);
+  $('mdTcO').textContent=Math.round(MS.tc*1000)+' ms'; $('mdHO').textContent=mdF(MS.H,1)+' s';
+  $('mdSwRo').innerHTML= mdRo('除去したときの角度 δc', mdF(deg(s.dc),1)+'°', '事故前 '+mdF(deg(d0),1)+'°')
+    + mdRo('臨界除去時間 CCT', Math.round(cct*1000)+' ms', `H = ${mdF(MS.H,1)} s のとき`)
+    + mdRo('判定', s.stable?'安定':'脱調', s.stable?`最大 ${mdF(deg(s.dmax),1)}°（δu = ${mdF(deg(du),1)}° より手前で戻る）`:'減速の面積 A2 が足りない', s.stable?'good':'bad'); }
+
+/* ---------- 3. 負荷 ---------- */
+const MZ={V:0.8,z:40,i:20,p:40}; const MD_ZPRE={heat:[100,0,0],mix:[40,20,40],inv:[10,10,80]};
+function mdZw(){ const s=MZ.z+MZ.i+MZ.p||1; return [MZ.z/s,MZ.i/s,MZ.p/s]; }
+function mdDrawZip(){ const {c,W,H,K}=mdCv('mdZipCv', W=> W<560 ? mdClamp(W*1.2,420,560) : mdClamp(W*0.5,260,340)); const [az,ai,ap]=mdZw();
+  const two=W>=560, gap=two?44:52, bw=two?(W-56-gap)/2:W-56, bh=two?H-66:(H-66-gap)/2;
+  const bP={x:44,y:30,w:bw,h:bh}, bI= two?{x:44+bw+gap,y:30,w:bw,h:bh}:{x:44,y:30+bh+gap,w:bw,h:bh};
+  const PZ=v=>v*v, PI=v=>v, PP=()=>1, Pm=v=>az*v*v+ai*v+ap;
+  const cols=[K.s1,K.s2,K.s3];
+  let A=mdAxes(c,K,bP,[0.3,1.1],[0,1.3],{xt:[0.4,0.6,0.8,1.0],yt:[0,0.5,1],yl:'電力 P (pu)',xl:'電圧 V (pu)'});
+  mdClip(c,bP); [PZ,PI,PP].forEach((f,i)=>mdCurve(c,A.X,A.Y,f,0.3,1.1,80,cols[i],1.8)); mdCurve(c,A.X,A.Y,Pm,0.3,1.1,80,K.ink,3);
+  mdVline(c,bP,A.X(MZ.V),K.target,[3,3],1.2); [PZ,PI,PP].forEach((f,i)=>mdDot(c,A.X(MZ.V),A.Y(f(MZ.V)),3.5,cols[i])); mdDot(c,A.X(MZ.V),A.Y(Pm(MZ.V)),5,K.ink); c.restore();
+  mdTag(c,K,'定 P',bP.x+6,A.Y(1)-10,K.s3); mdTag(c,K,'定 I',A.X(0.42),A.Y(0.42)-12,K.s2); mdTag(c,K,'定 Z',A.X(0.62),A.Y(0.38)+12,K.s1);
+  const IZ=v=>v, II=()=>1, IP=v=>1/v, Im=v=>Pm(v)/v;
+  A=mdAxes(c,K,bI,[0.3,1.1],[0,3.5],{xt:[0.4,0.6,0.8,1.0],yt:[0,1,2,3],yl:'電流 I (pu)',xl:'電圧 V (pu)'});
+  mdClip(c,bI); [IZ,II,IP].forEach((f,i)=>mdCurve(c,A.X,A.Y,f,0.3,1.1,80,cols[i],1.8));
+  mdCurve(c,A.X,A.Y,v=>v/0.49,0.3,0.7,30,K.s3,1.6,[4,4]);
+  mdCurve(c,A.X,A.Y,Im,0.3,1.1,80,K.ink,3);
+  mdVline(c,bI,A.X(MZ.V),K.target,[3,3],1.2); [IZ,II,IP].forEach((f,i)=>mdDot(c,A.X(MZ.V),A.Y(f(MZ.V)),3.5,cols[i])); mdDot(c,A.X(MZ.V),A.Y(Im(MZ.V)),5,K.ink); c.restore();
+  mdTag(c,K,'定 P：I = 1/V',A.X(0.36),A.Y(3.2),K.s3); mdTag(c,K,'0.7 pu 以下を定 Z に',A.X(0.31),A.Y(0.12),K.s3,'left',`600 10px ${K.body}`); mdTag(c,K,'合成',bI.x+bI.w-4,A.Y(Im(1.08))-12,K.ink,'right');
+  $('mdVO').textContent=mdF(MZ.V)+' pu'; $('mdZzO').textContent=Math.round(az*100)+' %'; $('mdZiO').textContent=Math.round(ai*100)+' %'; $('mdZpO').textContent=Math.round(ap*100)+' %';
+  $('mdZipRo').innerHTML= mdRo('合成の電力 P', mdF(Pm(MZ.V))+' pu', '電圧 1.0 で 1.00 pu')
+    + mdRo('合成の電流 I', mdF(Im(MZ.V))+' pu', Im(MZ.V)>1.005?'電圧が下がったのに電流は増えた':Im(MZ.V)<0.995?'電流は減った':'電流は変わらない', Im(MZ.V)>1.005?'bad':'')
+    + mdRo('定電力だけなら', mdF(1/MZ.V)+' pu', '電流 = 1/V'); }
+function mdDrawMot(){ const {c,W,H,K}=mdCv('mdMotCv', W=>mdClamp(W*0.5,200,260)); const b={x:44,y:30,w:W-56,h:H-66};
+  const A=mdAxes(c,K,b,[0,0.3],[0,140],{xt:[0,0.05,0.1,0.2,0.3],xf:t=>t+' s',yt:[0,50,100],yl:'事故電流（実効値、系統分 = 100）'});
+  const m=t=>25*Math.exp(-t/0.03), n=90;
+  c.save(); c.globalAlpha=0.35; c.fillStyle=K.s1; c.fillRect(A.X(0),A.Y(100),A.X(0.3)-A.X(0),A.Y(0)-A.Y(100));
+  c.fillStyle=K.amber; c.beginPath(); for(let i=0;i<=n;i++){ const t=0.3*i/n; i?c.lineTo(A.X(t),A.Y(100+m(t))):c.moveTo(A.X(t),A.Y(100+m(t))); } c.lineTo(A.X(0.3),A.Y(100)); c.lineTo(A.X(0),A.Y(100)); c.closePath(); c.fill(); c.restore();
+  mdCurve(c,A.X,A.Y,t=>100+m(t),0,0.3,n,K.ink,2);
+  mdVline(c,b,A.X(0.02),K.target,[3,3],1.2); mdVline(c,b,A.X(0.2),K.muted,[3,3],1.2);
+  mdTag(c,K,'電動機から',A.X(0.035),A.Y(118),K.amber); mdTag(c,K,'系統から',A.X(0.15),A.Y(50),K.s1,'center');
+  mdTag(c,K,'瞬時要素',A.X(0.02)+3,b.y+8,K.target); mdTag(c,K,'限時要素',A.X(0.2)+3,b.y+8,K.muted); }
+
+/* ---------- 4. 線路 ---------- */
+const MD_LT={oc:{r:3.6,x:8.3,n:'架空 OC 120 mm²'},cv:{r:5.4,x:2.3,n:'ケーブル CV 100 mm²'},tl:{r:0.9,x:9.0,n:'X/R≈10 の線路'}}, MD_SRC={r:0.5,x:7}, MD_IN=1e7/(Math.sqrt(3)*6600);
+const ML={t:'oc',L:3};
+function mdDrawLine(){ const {c,W,H,K}=mdCv('mdLineCv', W=> W<560 ? mdClamp(W*1.3,440,600) : mdClamp(W*0.55,280,400)); const T=MD_LT[ML.t], r=MD_SRC.r+T.r*ML.L, x=MD_SRC.x+T.x*ML.L, z=Math.hypot(r,x);
+  const two=W>=560, Rm=MD_SRC.r+T.r*10, Xm=MD_SRC.x+T.x*10, bA= two ? {x:44,y:30,w:(W-60)*0.42,h:H-70} : {x:44,y:30,w:W-60,h:(H-120)/2};
+  const s=Math.min(bA.w/(Rm*1.08), bA.h/(Xm*1.08)), b={x:bA.x,y:bA.y,w:Math.min(bA.w,Rm*1.18*s),h:bA.h};
+  const LC={oc:K.s1,cv:K.s3,tl:K.s2};
+  const X=v=>b.x+v*s, Y=v=>b.y+b.h-v*s;
+  c.save(); c.strokeStyle=K.rule; c.lineWidth=1; c.font=`500 11px ${K.mono}`; c.fillStyle=K.muted;
+  const st=mdStep(Math.max(Rm,Xm)*1.1); for(let v=0; v<=b.w/s; v+=st){ c.beginPath(); c.moveTo(X(v),b.y); c.lineTo(X(v),b.y+b.h); c.stroke(); c.textAlign='center'; c.textBaseline='top'; c.fillText(String(+v.toFixed(3)),X(v),b.y+b.h+4); }
+  for(let v=0; v<=b.h/s; v+=st){ c.beginPath(); c.moveTo(b.x,Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); c.textAlign='right'; c.textBaseline='middle'; c.fillText(String(+v.toFixed(3)),b.x-5,Y(v)); }
+  c.strokeStyle=K.ink; c.lineWidth=1.2; c.beginPath(); c.moveTo(b.x,b.y); c.lineTo(b.x,b.y+b.h); c.lineTo(b.x+b.w,b.y+b.h); c.stroke(); c.restore();
+  mdText(c,K,'%R',b.x+b.w,b.y+b.h+26,K.muted,'right','middle',`700 12px ${K.body}`); mdText(c,K,'%X',b.x-40,b.y-8,K.muted,'left','middle',`700 12px ${K.body}`);
+  const arrow=(x1,y1,x2,y2,col,w,dash)=>{ c.save(); c.strokeStyle=col; c.fillStyle=col; c.lineWidth=w; if(dash) c.setLineDash(dash); c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); c.setLineDash([]); const a=Math.atan2(y2-y1,x2-x1); if(Math.hypot(x2-x1,y2-y1)>8){ c.beginPath(); c.moveTo(x2,y2); c.lineTo(x2-9*Math.cos(a-0.4),y2-9*Math.sin(a-0.4)); c.lineTo(x2-9*Math.cos(a+0.4),y2-9*Math.sin(a+0.4)); c.closePath(); c.fill(); } c.restore(); };
+  /* R を無視した |Z| = X（縦軸の上の線） */
+  c.save(); c.strokeStyle=K.target; c.lineWidth=5; c.globalAlpha=0.5; c.beginPath(); c.moveTo(X(0),Y(0)); c.lineTo(X(0),Y(x)); c.stroke(); c.restore();
+  mdHline(c,{x:X(0),w:X(r)-X(0)},Y(x),K.target,[4,4],1.2);
+  arrow(X(0),Y(0),X(MD_SRC.r),Y(MD_SRC.x),K.muted,2); arrow(X(MD_SRC.r),Y(MD_SRC.x),X(r),Y(x),LC[ML.t],2.6); arrow(X(0),Y(0),X(r),Y(x),K.ink,2.8);
+  /* 角度の弧 */
+  const ang=Math.atan2(x,r); c.save(); c.strokeStyle=K.ink; c.lineWidth=1.2; c.beginPath(); c.arc(X(0),Y(0),34,-ang,0); c.stroke(); c.restore();
+  mdText(c,K,'φ',X(0)+40*Math.cos(ang/2),Y(0)-40*Math.sin(ang/2),K.ink,'left','middle',`700 12px ${K.body}`);
+  mdTag(c,K,'電源',X(MD_SRC.r/2)+6,Y(MD_SRC.x/2),K.muted); mdTag(c,K,'線路 '+mdF(ML.L,1)+' km',X((MD_SRC.r+r)/2)+8,Y((MD_SRC.x+x)/2),LC[ML.t]);
+  mdTag(c,K,'|Z| = '+mdF(z)+' %',X(r)+6,Y(x)+14,K.ink); mdTag(c,K,'R を無視：X = '+mdF(x)+' %',X(0)+6,Y(x)-12,K.target);
+  /* 右（狭いときは下）：こう長と誤差 */
+  const ex= two ? b.x+b.w+70 : 44, bE= two ? {x:ex,y:30,w:W-12-ex,h:H-70} : {x:44,y:30+bA.h+80,w:W-56,h:(H-120)/2};
+  const eOf=(t,L)=>{ const q=MD_LT[t], rr=MD_SRC.r+q.r*L, xx=MD_SRC.x+q.x*L; return (Math.hypot(rr,xx)/xx-1)*100; };
+  const E=mdAxes(c,K,bE,[0,10],[0,115],{xt:[0,2,4,6,8,10],yt:[0,25,50,75,100],yl:'R を無視した誤差 (%)',xl:'こう長 (km)'});
+  mdClip(c,bE); Object.keys(MD_LT).forEach(t=>mdCurve(c,E.X,E.Y,L=>eOf(t,L),0,10,100,LC[t],t===ML.t?3:1.4,t===ML.t?null:[5,4])); mdDot(c,E.X(ML.L),E.Y(eOf(ML.t,ML.L)),5,LC[ML.t]); c.restore();
+  [['cv','ケーブル'],['oc','架空線'],['tl','X/R≈10']].forEach(([t,l])=>{ const v=eOf(t,10); mdTag(c,K,l,bE.x+bE.w-4,Math.max(bE.y+8,E.Y(v)-11),LC[t],'right'); });
+  const Is=MD_IN*100/z/1000, Ix=MD_IN*100/x/1000, err=(z/x-1)*100, tau=x/(2*Math.PI*60*r)*1000;
+  $('mdLenO').textContent=mdF(ML.L,1)+' km';
+  $('mdLineRo').innerHTML= mdRo('短絡電流（R を入れる）', mdF(Is)+' kA', '%Z = '+mdF(r)+' + j'+mdF(x)+' %') + mdRo('短絡電流（R を無視）', mdF(Ix)+' kA', '誤差 +'+mdF(err,1)+' %', err>10?'bad':'')
+    + mdRo('全体の X/R', mdF(x/r), 'インピーダンス角 '+mdF(ang*180/Math.PI,1)+'°') + mdRo('直流分の時定数', mdF(tau,1)+' ms', 'τ = X/(ωR)');
+  $('mdLineMsg').textContent = err<3 ? `誤差は ${mdF(err,1)} %。この X/R なら R を無視してもよい。` : err<10 ? `R を無視すると短絡電流を ${mdF(err,1)} % 大きく見積もる。当たりをつけるだけなら許せるが、感度の確認には R を入れる。` : `R を無視すると短絡電流を ${mdF(err,1)} % も大きく見積もる。OCR が本当に動くかの確認には使えない。`; }
+
+const MC={C:0.325,L:0.4}; const MD_E=6600/Math.sqrt(3), MD_W=2*Math.PI*60;
+function mdDrawCap(){ const {c,W,H,K}=mdCv('mdCapCv', W=>mdClamp(W*0.55,230,330)); const b={x:48,y:30,w:W-62,h:H-70};
+  const k=C=>3*MD_W*C*1e-6*MD_E, ymax=1.2;
+  const A=mdAxes(c,K,b,[0,0.5],[0,ymax],{xt:[0,0.1,0.2,0.3,0.4,0.5],xf:t=>t+'',yt:mdTicks(0,ymax).filter(v=>v<ymax*0.97),yl:'自構内の充電電流 (A)',xl:'自構内ケーブルのこう長 (km)'});
+  mdClip(c,b);
+  c.save(); c.fillStyle=K.s1; c.globalAlpha=0.15; c.beginPath(); c.moveTo(A.X(0),A.Y(0)); c.lineTo(A.X(0.5),A.Y(k(0.5)*0.5)); c.lineTo(A.X(0.5),A.Y(k(0.3)*0.5)); c.closePath(); c.fill(); c.restore();
+  mdHline(c,b,A.Y(0.2),K.target,[6,4],1.6);
+  mdCurve(c,A.X,A.Y,L=>k(MC.C)*L,0,0.5,2,K.ink,2.4);
+  const Lx=0.2/k(MC.C); mdVline(c,b,A.X(Lx),K.target,[2,3],1); mdDot(c,A.X(MC.L),A.Y(k(MC.C)*MC.L),5,K.ink); c.restore();
+  mdTag(c,K,'GR の整定 0.2 A',b.x+b.w-4,A.Y(0.2)-10,K.target,'right'); mdTag(c,K,'帯：C = 0.30〜0.50 µF/km',b.x+6,b.y+10,K.s1,'left',`600 11px ${K.body}`);
+  mdTag(c,K,Math.round(Lx*1000)+' m',A.X(Lx)+4,b.y+b.h-12,K.target);
+  const Ig=k(MC.C)*MC.L; $('mdClO').textContent=Math.round(MC.L*1000)+' m';
+  $('mdCapRo').innerHTML= mdRo('1 km あたり', mdF(k(MC.C))+' A', '3ωCE、C = '+MC.C+' µF/km') + mdRo('構外の完全地絡で ZCT を通る', mdF(Ig)+' A', Ig>0.2?'0.2 A を超える：方向のない GR は動く':'0.2 A 未満：GR は動かない', Ig>0.2?'bad':'good')
+    + mdRo('0.2 A に届くこう長', Math.round(Lx*1000)+' m', 'これより長いなら 67G'); }
+
+/* ---------- 5a. INV の事故電流 ---------- */
+const MI={vr:0.5,set:1.5}; const MD_TF=0.1, MD_TCL=0.4;
+function mdSg(t){ if(t<MD_TF||t>=MD_TCL) return 1; const xe=MI.vr*MDG.x2/(1-MI.vr), g=mdGenK(xe); const f=mdIac(g,t-MD_TF,false); return Math.hypot(1,f); }
+function mdInv(t){ if(t<MD_TF) return 1; const gb=MI.vr<0.2;
+  if(t<MD_TCL){ const u=(t-MD_TF); return gb ? Math.max(0,1-u/0.005) : 1+0.1*Math.min(1,u/0.025); }
+  const u=t-MD_TCL; return gb ? Math.min(1,u/0.2) : 1.1-0.1*Math.min(1,u/0.02); }
+function mdDrawInv(){ const {c,W,H,K}=mdCv('mdInvCv', W=>mdClamp(W*0.6,250,360)); const b={x:44,y:30,w:W-56,h:H-68};
+  let mx=0; for(let t=0;t<=0.8;t+=0.002) mx=Math.max(mx,mdSg(t)); const ymax=Math.max(3,mx*1.12);
+  const A=mdAxes(c,K,b,[0,0.8],[0,ymax],{xt:[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8],xf:t=>String(t),yt:mdTicks(0,ymax).filter(v=>v<ymax*0.97),yl:'電流（実効値、定格 = 1）',xl:'時間 (s)'});
+  c.save(); c.fillStyle=K.fault; c.globalAlpha=0.1; c.fillRect(A.X(MD_TF),b.y,A.X(MD_TCL)-A.X(MD_TF),b.h); c.restore(); mdTag(c,K,'事故中',A.X(MD_TF)+3,b.y+10,K.fault);
+  mdClip(c,b); mdHline(c,b,A.Y(MI.set),K.target,[6,4],1.6);
+  mdCurve(c,A.X,A.Y,mdSg,0,0.8,800,K.s1,2.4); mdCurve(c,A.X,A.Y,mdInv,0,0.8,800,K.s3,2.4); c.restore();
+  mdTag(c,K,'OCR の整定 '+mdF(MI.set,1)+' 倍',b.x+b.w-4,A.Y(MI.set)-10,K.target,'right');
+  mdTag(c,K,'同期発電機',A.X(0.11)+4,A.Y(mdSg(0.11))-12,K.s1); mdTag(c,K,'INV',A.X(0.45),A.Y(mdInv(0.45))+(MI.vr<0.2?-12:14),K.s3);
+  let sgMax=0; for(let t=MD_TF;t<MD_TCL;t+=0.001) sgMax=Math.max(sgMax,mdSg(t)); const ivMax= MI.vr<0.2?0:1.1;
+  $('mdVrO').textContent=Math.round(MI.vr*100)+' %'; $('mdOsO').textContent=mdF(MI.set,1)+' 倍';
+  $('mdInvRo').innerHTML= mdRo('同期発電機の最大', mdF(sgMax)+' 倍', sgMax>MI.set?'OCR の整定を超える':'整定に届かない（遠い事故）', sgMax>MI.set?'good':'bad')
+    + mdRo('INV の最大（事故中）', mdF(ivMax,1)+' 倍', MI.vr<0.2?'残電圧 20 % 未満でゲートブロック':'電流制限で頭打ち', 'bad')
+    + mdRo('残電圧と UVR（80 %）', Math.round(MI.vr*100)+' %', MI.vr<0.8?'UVR なら事故を見つけられる':'UVR にも届かない', MI.vr<0.8?'good':'bad'); }
+
+/* ---------- 5b. 慣性と周波数 ---------- */
+const MF={dp:0.05,sh:0.5};
+function mdFsim(dp,sh){ const H=5*(1-sh), Kg=(1-sh)/0.05, Tg=5, D=1, f0=60, dt=0.004; let df=0, pm=0, fmin=0, tmin=0; const tr=[[0,f0]];
+  for(let i=1;i*dt<=20+1e-9;i++){ const t=i*dt; pm+=(-Kg*df-pm)/Tg*dt; df+=(pm-dp-D*df)/(2*H)*dt; if(df<fmin){ fmin=df; tmin=t; } if(i%5===0) tr.push([t,f0*(1+df)]); }
+  return {tr,fmin:f0*(1+fmin),tmin,rocof:-dp*f0/(2*H),fend:f0*(1+df)}; }
+function mdDrawFq(){ const {c,W,H,K}=mdCv('mdFqCv', W=>mdClamp(W*0.6,250,360)); const b={x:52,y:30,w:W-64,h:H-68};
+  const s=mdFsim(MF.dp,MF.sh), s0=mdFsim(MF.dp,0), ymin=Math.min(58.8, Math.floor((s.fmin-0.15)*5)/5), ymax=60.2;
+  const A=mdAxes(c,K,b,[0,20],[ymin,ymax],{xt:[0,5,10,15,20],yt:mdTicks(ymin,ymax).filter(v=>v<ymax-0.01),yf:v=>v.toFixed(1),yl:'周波数 (Hz)',xl:'時間 (s)'});
+  mdClip(c,b); mdHline(c,b,A.Y(59.0),K.target,[6,4],1.6);
+  const pl=(tr,col,w,a)=>{ c.save(); c.strokeStyle=col; c.lineWidth=w; c.globalAlpha=a; c.beginPath(); tr.forEach(([t,f],i)=>{ i?c.lineTo(A.X(t),A.Y(f)):c.moveTo(A.X(t),A.Y(f)); }); c.stroke(); c.restore(); };
+  pl(s0.tr,K.muted,2,0.6); pl(s.tr,K.s1,2.6,1);
+  c.save(); c.strokeStyle=K.fault; c.lineWidth=1.4; c.setLineDash([3,3]); c.beginPath(); c.moveTo(A.X(0),A.Y(60)); c.lineTo(A.X(1.2),A.Y(60+s.rocof*1.2)); c.stroke(); c.restore();
+  mdDot(c,A.X(s.tmin),A.Y(s.fmin),4.5,K.s1); c.restore();
+  mdTag(c,K,'UFR の整定 59.0 Hz',b.x+b.w-4,A.Y(59.0)+12,K.target,'right'); mdTag(c,K,'直後の傾き（RoCoF）',A.X(1.3),A.Y(60+s.rocof*1.2)+4,K.fault,'left',`600 11px ${K.body}`);
+  mdTag(c,K,'INV 0 %',A.X(s0.tmin)+6,A.Y(s0.fmin)+14,K.muted);
+  $('mdDpO').textContent=mdF(MF.dp*100,1)+' %'; $('mdShO').textContent=Math.round(MF.sh*100)+' %';
+  $('mdFqRo').innerHTML= mdRo('RoCoF（直後）', mdF(s.rocof)+' Hz/s', 'INV 0 % なら '+mdF(s0.rocof)+' Hz/s') + mdRo('最低周波数', mdF(s.fmin)+' Hz', mdF(s.tmin,1)+' s 後（INV 0 % は '+mdF(s0.fmin)+' Hz）')
+    + mdRo('UFR 59.0 Hz', s.fmin<=59.0?'動く':'届かない', s.fmin<=59.0?'負荷遮断が始まる':'周波数は戻る', s.fmin<=59.0?'bad':'good'); }
+
+/* ---------- 6. 手順とツール ---------- */
+const MD_STEPS=[
+  ['何を知りたいか決める','整定値（最小の事故電流で確実に動くか）、協調（下流より遅いか）、機器の強度（最大の事故電流）、安定度（何秒で切るか）、過渡現象（CT 飽和・励磁突入）。知りたいことで、最大と最小のどちらを出すかも決まる。'],
+  ['データを集める','電源側の %Z と基準容量、変圧器の %Z と結線（Δ か Y か。零相電流が通るかが決まる）、発電機の定数（X\'\'d・X\'d・H）、CT・VT の比、ケーブルの R・X・C とこう長。'],
+  ['単位法にそろえる','基準容量を 1 つ決め（例 10 MVA）、すべての %Z を換算する。同じ電圧なら次の式。','%<i>Z</i><sub>新</sub> = %<i>Z</i><sub>旧</sub> × <i>S</i><sub>基準</sub> / <i>S</i><sub>定格</sub>'],
+  ['事故計算','三相短絡は正相回路だけ。2 線短絡は正相と逆相を事故点で並列に（<i>I</i><sub>1</sub> = −<i>I</i><sub>2</sub>）、1 線地絡は正相・逆相・零相を直列につなぐ（対称座標法）。','三相短絡　<i>I</i> = <i>E</i> / <i>Z</i><sub>1</sub><br>2 線短絡　<i>I</i> = √3<i>E</i> / (<i>Z</i><sub>1</sub> + <i>Z</i><sub>2</sub>)<br>1 線地絡　<i>I</i> = 3<i>E</i> / (<i>Z</i><sub>1</sub> + <i>Z</i><sub>2</sub> + <i>Z</i><sub>0</sub> + 3<i>Z</i><sub>f</sub>)'],
+  ['最大と最小の両方を出す','IEC 60909 では、中・高圧の電圧係数を最大 c<sub>max</sub> = 1.10（電動機を入れる）、最小 c<sub>min</sub> = 1.00（電動機を入れない）とする。最大で機器の強度と、瞬時要素が下流の事故で動かないかを確かめる。最小で感度（遠い事故・事故抵抗ありでも動くか）を確かめる。'],
+  ['時間の変化が要るなら動的解析','周波数・電圧の回復・安定度は RMS、CT 飽和・直流分・INV の制御・サージは EMT。0 の時間の地図で選ぶ。'],
+];
+const MD_TOOLS=[
+  ['手計算・表計算','%Z 法・対称座標法','OCR・OCGR の整定、協調の当たりをつける'],
+  ['pandapower（Python）','潮流計算、IEC 60909 の短絡計算','OCR の最大・最小、RPR・OVR の潮流'],
+  ['MATPOWER（MATLAB・Octave）','潮流計算、最適潮流','RPR・OVR・UVR の定常の電圧と潮流'],
+  ['OpenDSS','配電系統の潮流・時系列・短絡','太陽光の逆潮流と電圧上昇（OVR）、配電の協調'],
+  ['ANDES（Python）','RMS の動特性（発電機・調速機・AVR）','FR・UVR、安定度と臨界除去時間'],
+  ['PowerFactory・PSS/E（商用）','短絡・潮流・RMS、保護協調の機能','系統全体の整定と協調'],
+  ['PSCAD/EMTDC・EMTP-ATP・XTAP','EMT（瞬時値）','CT 飽和、励磁突入電流、INV の制御、雷・開閉サージ'],
+  ['MATLAB Simscape Electrical','EMT と位相領域（phasor）','制御を含む INV、継電器のモデルの試作'],
+];
+function mdPaintStatic(){ $('mdSteps').innerHTML=MD_STEPS.map(([h,p,eq],i)=>`<div class="md-stp"><h4><span class="md-n">${i+1}</span>${h}</h4><p>${p}</p>${eq?`<div class="eq">${eq}</div>`:''}</div>`).join('');
+  $('mdTools').innerHTML=`<thead><tr><th>ツール</th><th>できること</th><th>向いている継電器・検討</th></tr></thead><tbody>${MD_TOOLS.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  $('mdPick').innerHTML=RELAYS.map(r=>`<button class="md-rb" data-id="${r.id}" aria-pressed="false"><span class="mono">${r.no}</span>${r.ab}</button>`).join(''); }
+
+/* ---------- 組み立て ---------- */
+function mdDrawAll(){ mdDrawGen(); mdDrawSwing(); mdDrawZip(); mdDrawMot(); mdDrawLine(); mdDrawCap(); mdDrawInv(); mdDrawFq(); }
+let mdBuilt=false;
+function buildModel(){ if(mdBuilt){ mdDrawAll(); return; } mdBuilt=true;
+  mdPaintStatic(); mdPaintLadder(); mdPaintPick();
+  $('mdPick').addEventListener('click',e=>{ const b=e.target.closest('.md-rb'); if(!b) return; mdSel=b.dataset.id; mdPaintPick(); });
+  $('mdCard').addEventListener('click',e=>{ const b=e.target.closest('[data-go]'); if(!b) return; setView('relay'); selectRelay(b.dataset.go); window.scrollTo({top:0,behavior:'smooth'}); });
+  const rng=(id,on)=>$(id).addEventListener('input',e=>on(+e.target.value));
+  rng('mdXe',v=>{ MG.xe=v; mdDrawGen(); }); rng('mdAl',v=>{ MG.al=v; mdDrawGen(); });
+  mdSeg('mdOv',v=>{ MG.ov=v==='1'; mdDrawGen(); }); mdSeg('mdAvr',v=>{ MG.avr=v==='1'; mdDrawGen(); });
+  rng('mdTc',v=>{ MS.tc=v; mdDrawSwing(); }); rng('mdH',v=>{ MS.H=v; mdDrawSwing(); });
+  rng('mdV',v=>{ MZ.V=v; mdDrawZip(); });
+  const zipSet=()=>{ mdSegSet('mdZipPre',''); mdDrawZip(); };
+  rng('mdZz',v=>{ MZ.z=v; zipSet(); }); rng('mdZi',v=>{ MZ.i=v; zipSet(); }); rng('mdZp',v=>{ MZ.p=v; zipSet(); });
+  mdSeg('mdZipPre',v=>{ [MZ.z,MZ.i,MZ.p]=MD_ZPRE[v]; $('mdZz').value=MZ.z; $('mdZi').value=MZ.i; $('mdZp').value=MZ.p; mdDrawZip(); });
+  mdSeg('mdLt',v=>{ ML.t=v; mdDrawLine(); }); rng('mdLen',v=>{ ML.L=v; mdDrawLine(); });
+  mdSeg('mdCc',v=>{ MC.C=+v; mdDrawCap(); }); rng('mdCl',v=>{ MC.L=v; mdDrawCap(); });
+  rng('mdVr',v=>{ MI.vr=v; mdDrawInv(); }); rng('mdOs',v=>{ MI.set=v; mdDrawInv(); });
+  rng('mdDp',v=>{ MF.dp=v; mdDrawFq(); }); rng('mdSh',v=>{ MF.sh=v; mdDrawFq(); });
+  mdDrawAll(); }
+let mdRz=0; window.addEventListener('resize',()=>{ clearTimeout(mdRz); mdRz=setTimeout(()=>{ if(mdBuilt && VIEW==='model') mdDrawAll(); },120); });
+try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(mdBuilt && VIEW==='model') mdDrawAll(); }); }catch(e){}
+if(h0==='model') setView('model');
+</script>
+
+<style>
+/* 抜け穴と組み合わせ・特性の形の理由 */
+.gp-chip{display:inline-block;font-size:11px;font-weight:700;color:var(--bg);border-radius:3px;padding:1px 6px;margin-right:6px;letter-spacing:.04em;white-space:nowrap;vertical-align:1px}
+.gp-why-wrap{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.gp-why-wrap{grid-template-columns:minmax(0,1fr)}}
+.gp-why{display:block;width:100%;height:auto;background:var(--sunk);border-radius:3px}
+.gp-rg{fill-opacity:.2}
+.gp-ax{stroke:var(--ink);stroke-width:1.4}.gp-tk{stroke:var(--muted)}
+.gp-t{font:600 11px var(--f-body);fill:var(--ink)}.gp-tm{fill:var(--muted);font-weight:500}.gp-tn{font:500 10px var(--f-mono);fill:var(--muted)}
+.gp-cv{stroke:var(--target);stroke-width:2.5;fill:none;stroke-linejoin:round}
+.gp-dl{stroke:var(--muted);stroke-width:1.3;stroke-dasharray:4 3;fill:none}
+.gp-vec{stroke-width:2.2;fill:none}
+.gp-b circle{fill:var(--ink)}.gp-b text{font:700 11px var(--f-mono);fill:var(--bg)}
+.gp-items{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.gp-items>li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start}
+.gp-n{width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--bg);font:700 11px/20px var(--f-mono);text-align:center}
+.gp-items b{font-family:var(--f-display);font-size:14px}
+.gp-items p{margin:2px 0 0;font-size:13.5px;line-height:1.7}
+.gp-leg{display:flex;flex-wrap:wrap;gap:4px 2px;margin:8px 0 0}
+.gp-miss{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin:4px 0 10px}
+.gp-m{border:1px solid var(--rule);border-radius:4px;padding:10px 12px;background:var(--bg)}
+.gp-m b{display:block;font-family:var(--f-display);font-size:14px;margin:4px 0 2px}
+.gp-m p{margin:0;font-size:13.5px;line-height:1.7}
+.gp-m .fx{margin-top:6px;padding-top:6px;border-top:1px dashed var(--rule)}
+.gp-m .fx::before{content:'埋めるもの　';font-weight:700;color:var(--ok)}
+.gp-combo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.gp-combo p{margin:0;flex:1 1 320px;font-size:14px}
+/* カバー表 */
+.gp-lead{margin:0;max-width:78ch;color:var(--muted)}
+.gp-types{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin:10px 0 0}
+.gp-type{border:1px solid var(--rule);border-radius:4px;padding:8px 10px;background:var(--bg);font-size:13px;line-height:1.6}
+.gp-type .gp-chip{margin-bottom:4px}
+.gp-tw{overflow-x:auto;border:1px solid var(--rule);border-radius:4px;margin-top:10px;-webkit-overflow-scrolling:touch}
+.gp-tbl{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+.gp-tbl th,.gp-tbl td{border-bottom:1px solid var(--rule);padding:0;text-align:center;background:var(--surface)}
+.gp-tbl thead th{position:sticky;top:0;z-index:1;vertical-align:bottom}
+.gp-tbl .gp-rh{position:sticky;left:0;z-index:2;text-align:left;border-right:1.5px solid var(--rule);min-width:11.5em;max-width:15em}
+@media (max-width:560px){.gp-tbl .gp-rh{min-width:8.5em;max-width:10em;font-size:12px}}
+.gp-tbl thead .gp-rh{z-index:3;padding:6px 8px;font-size:12px;color:var(--muted);font-weight:400}
+.gp-tbl button{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;padding:6px 8px;line-height:1.4}
+.gp-tbl button:focus-visible{outline:2px solid var(--target);outline-offset:-2px}
+.gp-tbl thead button{padding:6px 4px;min-width:3.2em}
+.gp-tbl thead b{display:block;font-family:var(--f-mono);font-size:13px}
+.gp-tbl thead small{display:block;font-size:10px;color:var(--muted);line-height:1.3;white-space:nowrap}
+.gp-tbl .gp-gh th{background:var(--sunk);text-align:left;padding:3px 8px;font-size:12px;font-family:var(--f-display);letter-spacing:.06em}
+.gp-tbl td{font-size:16px;font-weight:700;min-width:2.4em;height:34px}
+.gp-tbl tr.sel>*{background:color-mix(in srgb,var(--target) 12%,var(--surface))}
+.gp-tbl .colsel{background:color-mix(in srgb,var(--s1) 14%,var(--surface))}
+.gp-tbl tr.sel>.colsel{background:color-mix(in srgb,var(--target) 22%,var(--surface))}
+.gs-p{color:var(--ok)}.gs-b{color:var(--s1)}.gs-c{color:var(--amber)}.gs-x{color:var(--fault)}.gs-f{color:var(--target)}
+.gp-sym{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.gp-sym span b{font-size:15px;margin-right:3px}
+.gp-detail{margin-top:12px;border:1.5px solid var(--target);border-radius:4px;padding:12px 14px;background:var(--bg);min-height:120px}
+.gp-detail h3{font-size:16px;margin:0 0 6px}
+.gp-detail .harm{margin:0 0 8px;font-size:14px}.gp-detail .harm::before{content:'抜けると　';font-weight:700;color:var(--fault)}
+.gp-dl2{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 10px;align-items:baseline;font-size:13.5px;margin:0}
+.gp-dl2 .s{font-size:16px;font-weight:700;text-align:center}
+.gp-dl2 .d{font-family:var(--f-mono);font-weight:700;white-space:nowrap}
+.gp-h2{font-size:18px;margin:4px 0 -8px}
+.gp-schemes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.gp-sc h3{font-size:16px;margin:0 0 4px}.gp-sc .why{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.gp-sc ul{margin:0;padding-left:1.1em;font-size:13.5px;line-height:1.7}.gp-sc li b{font-family:var(--f-mono)}
+</style>
+<section id="viewGaps" class="view" hidden>
+  <div class="card">
+    <h3>1 つの継電器では守れない</h3>
+    <p class="gp-lead">どの継電器にも見えない事故がある。電流が小さすぎる、速すぎる、見ている量に出てこない、別の現象で誤って動く、装置そのものの不具合。見る量（電流・電圧・向き・差・周波数）が違う装置を重ね、主保護と後備保護の時限の差で穴を埋める。下の表は、事故の種類ごとにどの装置が受け持つかをまとめたもの。行か列を押すと説明が出る。</p>
+    <div class="gp-types" id="gpTypes"></div>
+  </div>
+  <div class="card">
+    <h3>カバー表：事故の種類 × 装置</h3>
+    <div class="gp-sym" id="gpSym"></div>
+    <div class="gp-tw"><table class="gp-tbl" id="gpTbl"></table></div>
+    <div class="gp-detail" id="gpDetail" aria-live="polite"></div>
+  </div>
+  <h2 class="gp-h2">設置の組み合わせの例</h2>
+  <div class="gp-schemes" id="gpSchemes"></div>
+</section>
+<script>
+"use strict";
+$('viewSld').after($('viewGaps'));
+
+/* ===== 理由と抜け穴の分類 ===== */
+const GPC={avoid:['不要動作を避ける','var(--s1)'], coord:['協調・整定のため','var(--amber)'], equip:['機器を守る','var(--ok)'], other:['別の装置が受け持つ','var(--s2)'], phys:['物理的に見えない・間に合わない','var(--fault)']};
+const GPM={small:['小さすぎる','var(--fault)'], fast:['速すぎる','var(--target)'], blind:['量に出ない','var(--s2)'], false:['誤って動く','var(--amber)'], device:['装置の落とし穴','var(--muted)']};
+const gpChip=(m,k)=>`<span class="gp-chip" style="background:${m[k][1]}">${m[k][0]}</span>`;
+
+/* ===== 特性の形の理由：模式図（SVG）の部品 ===== */
+const gW=380, gH=250, gPL=52, gPR=370, gPT=10, gPB=208;
+const gLx=(a,b)=>v=>gPL+(Math.log10(v)-Math.log10(a))/(Math.log10(b)-Math.log10(a))*(gPR-gPL);
+const gLy=(a,b)=>v=>gPB-(Math.log10(v)-Math.log10(a))/(Math.log10(b)-Math.log10(a))*(gPB-gPT);
+const gNx=(a,b)=>v=>gPL+(v-a)/(b-a)*(gPR-gPL);
+const gNy=(a,b)=>v=>gPB-(v-a)/(b-a)*(gPB-gPT);
+const f1=v=>(+v).toFixed(1);
+const gPts=pts=>pts.map(p=>f1(p[0])+','+f1(p[1])).join(' ');
+const gP=(pts,c)=>`<polygon class="gp-rg" style="fill:${GPC[c][1]}" points="${gPts(pts)}"/>`;
+const gR=(x1,y1,x2,y2,c)=>gP([[x1,y1],[x2,y1],[x2,y2],[x1,y2]],c);
+const gL=(pts,cls='gp-cv')=>`<polyline class="${cls}" points="${gPts(pts)}"/>`;
+const gT=(x,y,s,o={})=>`<text class="gp-t ${o.c||''}" x="${f1(x)}" y="${f1(y)}" text-anchor="${o.a||'start'}">${s}</text>`;
+const gB=(x,y,n)=>`<g class="gp-b"><circle cx="${f1(x)}" cy="${f1(y)}" r="9"/><text x="${f1(x)}" y="${f1(y+4)}" text-anchor="middle">${n}</text></g>`;
+const gArc=(cx,cy,r,a1,a2)=>{ const p=[]; for(let a=a1;a<=a2+0.01;a+=4) p.push([cx+r*Math.cos(a*Math.PI/180), cy-r*Math.sin(a*Math.PI/180)]); return p; };
+const gPol=(cx,cy,r,a)=>[cx+r*Math.cos(a*Math.PI/180), cy-r*Math.sin(a*Math.PI/180)];
+const gVec=(cx,cy,r,a,col,lab,o={})=>{ const [x,y]=gPol(cx,cy,r,a), [hx1,hy1]=gPol(x,y,9,a+155), [hx2,hy2]=gPol(x,y,9,a-155);
+  return `<line class="gp-vec" style="stroke:${col}" x1="${f1(cx)}" y1="${f1(cy)}" x2="${f1(x)}" y2="${f1(y)}"/><polygon style="fill:${col}" points="${gPts([[x,y],[hx1,hy1],[hx2,hy2]])}"/>`+(lab?gT(x+(o.dx||0),y+(o.dy||0),lab,{a:o.a||'start'}):''); };
+function gFrame(xt,yt,xl,yl){ let s=`<line class="gp-ax" x1="${gPL}" y1="${gPB}" x2="${gPR}" y2="${gPB}"/><line class="gp-ax" x1="${gPL}" y1="${gPT}" x2="${gPL}" y2="${gPB}"/>`;
+  xt.forEach(([x,l])=>{ s+=`<line class="gp-tk" x1="${f1(x)}" y1="${gPB}" x2="${f1(x)}" y2="${gPB+4}"/>`+gT(x,gPB+15,l,{a:'middle',c:'gp-tn'}); });
+  yt.forEach(([y,l])=>{ s+=`<line class="gp-tk" x1="${gPL-4}" y1="${f1(y)}" x2="${gPL}" y2="${f1(y)}"/>`+gT(gPL-6,y+4,l,{a:'end',c:'gp-tn'}); });
+  return s+gT((gPL+gPR)/2,gH-5,xl,{a:'middle'})+`<text class="gp-t" transform="translate(13 ${(gPT+gPB)/2}) rotate(-90)" text-anchor="middle">${yl}</text>`; }
+const gSvg=(body,aria)=>`<svg class="gp-why" viewBox="0 0 ${gW} ${gH}" role="img" aria-label="${aria}">${body}</svg>`;
+
+/* 継電器ごとの模式図。数字の丸は下の説明の番号 */
+const WHY={
+ocr:{svg(){ const X=gLx(0.3,40), Y=gLy(0.001,100), t=M=>0.3*0.14/(Math.pow(M,0.02)-1), td=M=>0.08*0.14/(Math.pow(M/0.5,0.02)-1);
+    const cv=[]; for(let i=0;i<=40;i++){ const M=1.06*Math.pow(12/1.06,i/40); cv.push([X(M),Y(t(M))]); }
+    const dn=[]; for(let i=0;i<=30;i++){ const M=0.53*Math.pow(8/0.53,i/30); dn.push([X(M),Y(td(M))]); }
+    let s=gR(gPL,gPT,X(1),gPB,'avoid')+gP([[X(1.06),gPT],...cv,[X(12),gPT]],'equip')+gR(X(12),gPT,gPR,Y(0.05),'coord')+gR(gPL,Y(0.01),gPR,gPB,'phys');
+    s+=gFrame([[X(0.5),'0.5'],[X(1),'1'],[X(2),'2'],[X(5),'5'],[X(10),'10'],[X(20),'20']],[[Y(0.001),'0.001'],[Y(0.01),'0.01'],[Y(0.1),'0.1'],[Y(1),'1'],[Y(10),'10'],[Y(100),'100']],'事故電流（整定値の何倍か・対数）','動作時間 s（対数）');
+    s+=gL([[X(1),gPT],[X(1),gPB]],'gp-dl')+gL([...dn,[X(8),Y(0.015)],[gPR,Y(0.015)]],'gp-dl')+gL([...cv,[X(12),Y(0.05)],[gPR,Y(0.05)]]);
+    s+=gT(X(0.62),Y(0.3),'下流の保護',{c:'gp-tm'})+gT(X(13),Y(0.035),'瞬時要素',{c:'gp-tm'})+gT(X(1.6),Y(0.0045),'雷サージ（μs）はこの帯よりさらに下',{c:'gp-tm'});
+    return s+gB(X(0.6),Y(2),1)+gB(X(2.6),Y(30),2)+gB(X(22),Y(2),3)+gB(X(0.6),Y(0.004),4); },
+  items:[
+    {t:'整定値より左：動かない', r:[['avoid','整定値（限時要素の動作電流）は、最大負荷電流より余裕をもって上に置く。電動機の始動電流や変圧器の励磁突入電流はそれより大きいが短時間なので、反限時の時限で見送る。'],['other','この範囲の過負荷は、低圧の MCCB や熱動継電器（49）が受け持つ。'],['phys','事故抵抗が大きい短絡、遠い短絡、INV だけが電源の短絡は電流が小さく、ここに入ってしまう（抜け穴）。']]},
+    {t:'反限時の曲線', r:[['equip','ケーブルや変圧器は電流の 2 乗 × 時間（I²t）で温まる。電流が大きいほど早く切る形は、この熱の耐量に沿っている。'],['coord','同じ電流なら下流の保護（点線）が先に切るよう、時限レバーで曲線を上下させる。停電の範囲が事故点の近くだけで済む。']]},
+    {t:'瞬時要素の段', r:[['equip','近くの大きな短絡は、電磁力とアークで設備を壊すので待たずに切る。'],['coord','整定は下流（変圧器の二次側など）の最大短絡電流より上にする。下流の事故で瞬時に動くと、協調が崩れる。'],['avoid','変圧器の励磁突入電流や電動機の始動電流でも動かない値にする。']]},
+    {t:'0.01 s より速い現象', r:[['phys','雷サージは数 μs〜数十 μs で終わる。継電器と遮断器（合わせて数十 ms 以上）は間に合わない。'],['other','雷は避雷器（LA）が大地へ逃がす。絶縁が破れたあとに続いて流れる電流（続流による短絡・地絡）は、継電器が切る。']]}]},
+ocgr:{svg(){ const X=gLx(0.02,20), Y=gLy(0.01,10);
+    let s=gR(gPL,gPT,X(0.2),gPB,'avoid')+gR(X(0.2),gPT,gPR,Y(0.2),'coord')+gR(X(0.2),gPT,X(0.7),Y(0.2),'phys')+gR(X(10),gPT,gPR,gPB,'phys');
+    s+=gFrame([[X(0.05),'0.05'],[X(0.2),'0.2'],[X(1),'1'],[X(5),'5'],[X(20),'20']],[[Y(0.01),'0.01'],[Y(0.1),'0.1'],[Y(1),'1'],[Y(10),'10']],'ZCT の電流 Ia+Ib+Ic = 3I0（A・対数）','動作時間 s（対数）');
+    s+=gL([[X(5),gPT],[X(5),gPB]],'gp-dl')+gL([[X(0.2),gPT],[X(0.2),Y(0.2)],[gPR,Y(0.2)]]);
+    s+=gT(X(0.21),Y(0.13),'整定 0.2 A・0.2 s',{c:'gp-tm'})+gT(X(4.6),Y(0.03),'構内の完全地絡（例 5 A）',{a:'end',c:'gp-tm'});
+    return s+gB(X(0.065),Y(1),1)+gB(X(2),Y(2),2)+gB(X(0.37),Y(2),3)+gB(X(14),Y(0.5),4); },
+  items:[
+    {t:'整定値より左：動かない', r:[['avoid','平常時も、3 相の対地静電容量の不ぞろいや漏れ電流で少し I0 が流れる。これで動かないよう整定は 0.1〜0.2 A 以上。'],['phys','事故抵抗が大きい地絡（樹木の接触、絶縁劣化の初め）は I0 がこれより小さく、見えない。'],['other','高圧用の絶縁監視・劣化診断や、停電しての絶縁抵抗の測定で、劣化を事故の前に見つける。']]},
+    {t:'定限時の動作域', r:[['coord','非接地系の地絡電流は数 A と小さく、電流の大きさだけでは事故の場所や危険度を見分けにくい。だから大きさで時間を変えず一定の時限にし、不要動作を避けながら上下の保護と協調させる。'],['coord','時限（0.2 s 程度）は変電所の地絡保護（F67G、約 0.9 s）より十分短くして、構内の地絡を変電所より先に切る。'],['phys','数 A でも事故点はアークで焼け、放っておくと 2 線地絡（短絡）に進む。小さいから安全という意味ではない。']]},
+    {t:'構外の地絡でも越えてしまう範囲', r:[['phys','GR は大きさしか見ない。構外の地絡でも自構内ケーブルの対地静電容量から I0 が流れ出し（100 m あたり約 0.14 A）、ケーブルが長いと整定を越える（もらい事故）。'],['other','向きも見る DGR（67G）にすると、構外の地絡を見送れる。']]},
+    {t:'右の端：非接地系では流れない大きさ', r:[['phys','非接地系の地絡電流は、配電線全体の対地静電容量で決まり（3ωCE）、完全地絡でも数 A〜十数 A。数百 A で整定する OCR には見えないので、地絡は専用の継電器で見る。']]}]},
+ovr:{svg(){ const X=gNx(90,145), Y=gLy(1e-5,100);
+    let s=gR(gPL,gPT,X(115),gPB,'avoid')+gR(X(115),gPT,gPR,Y(1),'equip')+gR(X(115),Y(1),gPR,Y(1e-3),'avoid')+gR(gPL,Y(1e-3),gPR,gPB,'phys');
+    s+=gFrame([90,100,110,120,130,140].map(v=>[X(v),String(v)]),[[Y(1e-5),'10μs'],[Y(1e-3),'1ms'],[Y(0.1),'0.1'],[Y(10),'10']],'線間電圧（%）','続く時間 s（対数）');
+    s+=gL([[X(115),gPT],[X(115),Y(1)],[gPR,Y(1)]]);
+    s+=gT(X(116),Y(1.6),'整定 115 %・1.0 s',{c:'gp-tm'})+gT(X(118),Y(3e-5),'雷・開閉サージ',{c:'gp-tm'});
+    return s+gB(X(100),Y(1),1)+gB(X(132),Y(12),2)+gB(X(132),Y(0.03),3)+gB(X(100),Y(3e-5),4)+gB((gPL+gPR)/2+52,gH-9,5); },
+  items:[
+    {t:'整定値より左：動かない', r:[['avoid','平常の電圧の変動（数 %）や、発電機の負荷が変わったときの揺れでは動かない。']]},
+    {t:'定限時の動作域', r:[['equip','機器の絶縁は数秒程度の過電圧には耐えるが、続くと劣化する。AVR の故障などで高い電圧が続いたら切る。']]},
+    {t:'時限より短い過電圧：見送る', r:[['avoid','負荷を急に外した直後の一時的な電圧上昇は、AVR が戻す。時限（1 s 前後）で待ち、戻らないときだけ動く。']]},
+    {t:'1 ms より速い過電圧', r:[['phys','雷や開閉サージは μs〜ms で、定限時の OVR では間に合わない。'],['other','避雷器（LA）とサージアブソーバが、絶縁が破れる前に電圧を抑える。']]},
+    {t:'横軸が「線間電圧」であること', r:[['phys','非接地系の 1 線地絡では、健全相の対地電圧が √3 倍に上がる。線間電圧は変わらないので、OVR には映らない。'],['other','地絡による対地電圧の上昇は OVGR（64）が V0 で見る。']]}]},
+ovgr:{svg(){ const X=gNx(0,110), Y=gLy(0.01,10), v0=rf=>100/Math.sqrt(1+(rf/3)**2);
+    let s=gR(gPL,gPT,X(10),gPB,'avoid')+gR(X(10),gPT,X(100),Y(0.5),'coord')+gR(X(100),gPT,gPR,gPB,'phys');
+    s+=gFrame([0,20,40,60,80,100].map(v=>[X(v),String(v)]),[[Y(0.01),'0.01'],[Y(0.1),'0.1'],[Y(1),'1'],[Y(10),'10']],'零相電圧 V0（完全地絡を 100 %）','動作時間 s（対数）');
+    s+=gL([[X(10),gPT],[X(10),Y(0.5)],[X(100),Y(0.5)]]);
+    [[0,'完全地絡'],[3,'Rf 3 kΩ'],[10,'10 kΩ'],[30,'30 kΩ']].forEach(([rf,l],i)=>{ const x=X(v0(rf)); s+=`<line class="gp-tk" x1="${f1(x)}" y1="${gPB-14}" x2="${f1(x)}" y2="${gPB}"/>`+gT(x+(i===3?3:-3),gPB-18-(i%2)*11,l,{a:i===3?'start':'end',c:'gp-tn'}); });
+    s+=gT(X(11),Y(0.33),'整定 10 %・0.5 s',{c:'gp-tm'});
+    return s+gB(X(5),Y(2),1)+gB(X(55),Y(3),2)+gB(X(105),Y(1),3)+gB(X(48),Y(0.03),4); },
+  items:[
+    {t:'整定値より左：動かない', r:[['avoid','3 相の対地静電容量がそろっていないと、平常時も V0 が少し出る（残留電圧）。整定はそれより上。'],['phys','事故抵抗が大きいと V0 が小さく、整定に届かない（④）。']]},
+    {t:'定限時の動作域', r:[['phys','V0 は配電線のどこで地絡しても同じように出る。OVGR だけでは自構内か構外か分からない。'],['coord','構内の地絡は、場所を見分ける DGR（0.2 s）に先に切らせる。OVGR の時限（0.5 s）はそれより長くして、DGR の後備にする。'],['other','自家発があれば、系統側の地絡で自家発を解列する連系保護として使う。配電線の再閉路の前に自家発を切り離しておく。']]},
+    {t:'右の端：100 % より上はない', r:[['phys','完全地絡で V0 は相電圧（100 %）になり、それ以上にはならない。']]},
+    {t:'事故抵抗と V0', r:[['phys','V0 = 100 / √(1 + (Rf / 3 kΩ)²) %（このシミュレータの例の系統）。Rf が 30 kΩ だと約 10 % で、整定 10 % ぎりぎり。接地抵抗・事故抵抗が大きい地絡ほど見えにくい。']]}]},
+uvr:{svg(){ const X=gNx(0,110), Y=gLy(0.01,10);
+    let s=gR(X(80),gPT,gPR,gPB,'avoid')+gR(gPL,Y(1),X(80),gPB,'coord')+gR(gPL,gPT,X(80),Y(1),'equip')+gR(gPL,gPT,X(6),gPB,'phys');
+    s+=gFrame([0,20,40,60,80,100].map(v=>[X(v),String(v)]),[[Y(0.01),'0.01'],[Y(0.1),'0.1'],[Y(1),'1'],[Y(10),'10']],'電圧（%）','低下が続く時間 s（対数）');
+    s+=gL([[X(80),gPT],[X(80),Y(1)],[gPL,Y(1)]]);
+    s+=gT(X(79),Y(1.5),'整定 80 %・1.0 s',{a:'end',c:'gp-tm'});
+    return s+gB(X(95),Y(1),1)+gB(X(45),Y(0.1),2)+gB(X(45),Y(4),3)+gB(X(3),Y(0.03),4); },
+  items:[
+    {t:'整定値より右：動かない', r:[['avoid','平常の電圧の変動や、電動機の始動による一時的な電圧降下では動かない。']]},
+    {t:'低下しても時限より短い：見送る', r:[['coord','遠くの事故による瞬時電圧低下（0.1 s 前後）は、その事故の継電器が切れば戻る。時限で待ち、ほかの保護に任せる。'],['avoid','一瞬の低下のたびに受電を切ると、かえって停電が増える。']]},
+    {t:'動作域：低い電圧が続く', r:[['equip','停電が続いたら負荷を切り離しておく。再送電のとき電動機が一斉に再始動して大電流が流れるのを防ぐ。非常用発電機も起動する。'],['other','逆変換装置（INV）を使う発電設備では、事故電流が小さく OCR では見えないので、系統側の短絡を UVR（電圧の低下）で見る。']]},
+    {t:'0 % 付近', r:[['phys','VT のヒューズが切れたり二次回路が外れたりしても、電圧 0 に見える。本当の停電と区別できない。'],['other','電流が流れているか、3 相がそろって下がったかを組み合わせて誤動作を防ぐ。']]}]},
+dsr:{svg(){ const cx=190, cy=116, r=92;
+    let s=gP([[cx,cy],...gArc(cx,cy,r,-150,30)],'coord')+gP([[cx,cy],...gArc(cx,cy,r,30,210)],'other')+`<circle class="gp-rg" style="fill:${GPC.phys[1]};fill-opacity:.35" cx="${cx}" cy="${cy}" r="16"/>`;
+    s+=`<circle class="gp-dl" cx="${cx}" cy="${cy}" r="${r}"/>`+gL([gPol(cx,cy,r+6,30),gPol(cx,cy,r+6,210)],'gp-cv')+gL([[cx,cy],gPol(cx,cy,r,-60)],'gp-dl');
+    s+=gVec(cx,cy,r+22,0,'var(--ink)','V（基準）',{dx:-40,dy:-8})+gVec(cx,cy,r*0.82,-82,'var(--fault)','系統側の短絡',{dx:-6,dy:10,a:'end'})+gVec(cx,cy,r*0.62,112,'var(--s2)','構内の短絡',{dx:-8,dy:-6,a:'end'});
+    s+=gT(...gPol(cx,cy,r*0.72,-18),'前方',{c:'gp-tm'})+gT(cx-72,cy+34,'後方',{c:'gp-tm'})+gT(gPol(cx,cy,r,-60)[0]+4,gPol(cx,cy,r,-60)[1]+6,'60° 遅れ',{c:'gp-tn'});
+    return s+gB(...gPol(cx,cy,r*0.42,-45),1)+gB(...gPol(cx,cy,r*0.55,150),2)+gB(cx,cy,3)+gB(...gPol(cx,cy,r+6,30),4); },
+  items:[
+    {t:'前方（網かけ）：動作する向き', r:[['coord','短絡電流は線路のインピーダンス角だけ電圧より遅れる。最大感度角（60° 遅れ、点線）はこの遅れに合わせ、その ±90° を動作域にする。']]},
+    {t:'後方：動かない', r:[['other','後方（構内側）の短絡は、電流の向きが逆なので動かない。構内の短絡は OCR が受け持つ。']]},
+    {t:'原点のまわり', r:[['avoid','電流が整定より小さいと動かない。負荷電流や小さな逆潮流で動くのを防ぐ。'],['phys','継電器のすぐ前の三相短絡では電圧がほぼ 0 になり、向きの基準が消える。事故の前の電圧を記憶して使う（メモリ作用）。']]},
+    {t:'境目（±90°）', r:[['avoid','境目の近くは判定がぶれる。負荷の力率によっては電流がここに来るので、最小動作電流と時限（0.2 s）で守る。']]}]},
+dgr:{svg(){ const cx=190, cy=116, r=92;
+    let s=gP([[cx,cy],...gArc(cx,cy,r,-45,135)],'coord')+gP([[cx,cy],...gArc(cx,cy,r,135,315)],'avoid')+`<circle class="gp-rg" style="fill:${GPC.phys[1]};fill-opacity:.35" cx="${cx}" cy="${cy}" r="16"/>`;
+    s+=`<circle class="gp-dl" cx="${cx}" cy="${cy}" r="${r}"/>`+gL([gPol(cx,cy,r+6,135),gPol(cx,cy,r+6,315)],'gp-cv')+gL([[cx,cy],gPol(cx,cy,r,45)],'gp-dl');
+    s+=gVec(cx,cy,r+22,0,'var(--ink)','V0（基準）',{dx:-50,dy:16})+gVec(cx,cy,r*0.8,84,'var(--fault)','構内の地絡',{dx:-8,dy:6,a:'end'})+gVec(cx,cy,r*0.45,-96,'var(--s1)','構外の地絡（もらい事故）',{dx:8,dy:12});
+    s+=gT(gPol(cx,cy,r,45)[0]+4,gPol(cx,cy,r,45)[1]-2,'45° 進み',{c:'gp-tn'});
+    return s+gB(...gPol(cx,cy,r*0.55,30),1)+gB(...gPol(cx,cy,r*0.6,215),2)+gB(cx,cy,3); },
+  items:[
+    {t:'動作域：I0 が V0 より進む側', r:[['coord','構内の地絡では、ほかの区間の対地静電容量の電流が流れ込み、I0 は V0 よりほぼ 90° 進む。GPT の制限抵抗などで抵抗分（0°）も混ざるので、その間の 45° 進みを最大感度角にし、±90° を動作域にする。']]},
+    {t:'不動作域：もらい事故を見送る', r:[['avoid','構外の地絡では、自構内のケーブルの静電容量の電流が逆向きに流れる（遅れ側）。大きさが整定を越えても、向きで見送れる。GR との違いはここ。']]},
+    {t:'原点のまわり：I0 と V0 の両方が要る', r:[['avoid','I0（0.2 A）と V0（5 %）の両方が整定を越えたときだけ動く（AND 条件）。平常時の不平衡では動かない。'],['phys','事故抵抗が大きいと、どちらかが届かず見えない。']]}]},
+dfr:{svg(){ const X=gNx(0,10), Y=gNy(0,3), e=I=>0.05*I+0.012*I*I; const ec=[]; for(let i=0;i<=40;i++){ const I=i/4; ec.push([X(I),Y(Math.min(3,e(I)))]); }
+    const x0=3.36, cr=[]; for(let i=0;i<=20;i++){ const I=x0+(10-x0)*i/20; cr.push([X(I),Y(e(I))]); }
+    let s=gR(gPL,Y(0.3),gPR,gPB,'avoid')+gR(gPL,gPT,gPR,Y(0.3),'equip')+gP([[X(x0),Y(0.3)],...cr,[gPR,Y(0.3)]],'other');
+    s+=gFrame([0,2,4,6,8,10].map(v=>[X(v),String(v)]),[0,1,2,3].map(v=>[Y(v),String(v)]),'通過電流 Ir（定格の何倍か）','差電流 Id');
+    s+=gL(ec,'gp-dl')+gL([[X(0),Y(0)],[X(1.5),Y(3)]],'gp-dl')+gL([[gPL,Y(0.3)],[gPR,Y(0.3)]]);
+    s+=gT(X(9.8),Y(1.85),'外部事故で CT 誤差が生む差電流（例）',{a:'end',c:'gp-tm'})+gT(X(1.55),Y(2.85),'片側だけに流れる電流（Id = 2Ir）',{c:'gp-tm'})+gT(X(9.8),Y(0.38),'整定 0.3',{a:'end',c:'gp-tn'});
+    return s+gB(X(5),Y(0.15),1)+gB(X(5),Y(2.2),2)+gB(X(8.6),Y(0.7),3)+gB(X(1.2)+14,Y(2.4),4); },
+  items:[
+    {t:'整定より下：動かない', r:[['avoid','平常時も CT の誤差や変圧器の励磁電流で、差電流が少し出る。整定はそれより上（定格の 0.3 倍など）。'],['phys','巻線の数ターンだけの短絡（層間短絡）は、端子に出る差電流が小さく見えない。'],['other','コンサベータ付きの油入変圧器では、ブッフホルツ継電器（96）が油の中のガスと油の流れで見つける。']]},
+    {t:'動作域：区間の中の事故', r:[['equip','変圧器の中の事故は、油の分解と圧力の上昇で破裂・火災につながる。時限を待たずに瞬時に切る。']]},
+    {t:'外部事故で誤って入る範囲', r:[['phys','区間の外の大きな事故で CT の誤差が増え（点線）、飽和すると差電流が整定を越える。'],['other','通過電流に比例して整定を上げる比率差動（RDFR）が受け持つ。']]},
+    {t:'片側だけに流れる電流', r:[['avoid','変圧器を入れた瞬間の励磁突入電流は、一次側にだけ流れるので内部事故と同じ形（Id = 2Ir）になる。大きさでは区別できないので、第 2 高調波が多いときは動作を止める。']]}]},
+rdfr:{svg(){ const X=gNx(0,10), Y=gNy(0,6), bd=I=>Math.max(0.3, I<=5?0.4*I:2+0.8*(I-5)), e=I=>0.05*I+0.012*I*I;
+    const b=[[X(0),Y(0.3)],[X(0.75),Y(0.3)],[X(5),Y(2)],[X(10),Y(6)]], ec=[]; for(let i=0;i<=40;i++){ const I=i/4; ec.push([X(I),Y(e(I))]); }
+    let s=gP([[gPL,gPB],[gPL,Y(0.3)],[X(0.75),Y(0.3)],[X(0.75),gPB]],'avoid')+gP([[X(0.75),gPB],[X(0.75),Y(0.3)],[X(5),Y(2)],[X(5),gPB]],'avoid')+gP([[X(5),gPB],[X(5),Y(2)],[X(10),Y(6)],[gPR,gPB]],'avoid')+gP([[gPL,gPT],...b,[gPL,gPT]],'equip');
+    s+=`<ellipse class="gp-rg" style="fill:${GPC.phys[1]};fill-opacity:.4" cx="${f1(X(2.2))}" cy="${f1(Y(0.55))}" rx="22" ry="9"/>`;
+    s+=gFrame([0,2,4,6,8,10].map(v=>[X(v),String(v)]),[0,2,4,6].map(v=>[Y(v),String(v)]),'通過電流 Ir（定格の何倍か）','差電流 Id');
+    s+=gL(ec,'gp-dl')+gL([[gPL,Y(4.5)],[gPR,Y(4.5)]],'gp-dl')+gL(b);
+    s+=gT(X(0.2),Y(4.75),'差動瞬時要素',{c:'gp-tm'})+gT(X(3.6),Y(1.85),'比率 40 %',{a:'end',c:'gp-tn'})+gT(X(9.9),Y(1.95),'CT 誤差（例）',{a:'end',c:'gp-tn'});
+    return s+gB(gPL+12,Y(0.13),1)+gB(X(4),Y(0.3),2)+gB(X(8),Y(1.0),3)+gB(X(2),Y(3.3),4)+gB(X(6.5),Y(4.5),5)+gB(X(2.2)+30,Y(0.55),6); },
+  items:[
+    {t:'最小動作値（水平の部分）', r:[['avoid','通過電流が小さいときの CT 誤差と励磁電流で動かないよう、最小動作値（定格の 0.3 倍など）を置く。']]},
+    {t:'比率の斜線', r:[['avoid','CT の誤差は通過電流にほぼ比例して増える。そこで整定も通過電流に比例して上げる（Id ≥ 比率 × Ir）。比率 40 % なら、CT 誤差がおよそ 33 % までは外部事故で動かない。']]},
+    {t:'2 段目の急な斜線', r:[['avoid','さらに大きな通過電流では CT が飽和して誤差が急に増えるので、傾きを急にする。']]},
+    {t:'動作域', r:[['equip','区間の中の事故は差電流が大きく、斜線より上に出る。瞬時に切る。']]},
+    {t:'差動瞬時要素', r:[['equip','内部の大事故で CT が飽和すると、比率要素の判定が遅れることがある。差電流がとても大きければ、比率に関係なくすぐ動く。']]},
+    {t:'斜線の下に入る内部事故', r:[['phys','巻線の層間短絡や中性点の近くの地絡は差電流が小さく、比率を上げるほど見えにくい。'],['other','ブッフホルツ継電器（96）が受け持つ。接地された Y 巻線の中性点に近い地絡には、地絡専用の差動（REF、中性点の CT が要る）を使う。']]}]},
+dr:{svg(){ const ox=130, oy=185, k=85, A=75, P=(m,a=A)=>gPol(ox,oy,m*k,a), circ=d=>{ const [cx,cy]=P(d/2); return `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(d/2*k)}"`; };
+    let s=gP([...gArc(ox,oy,182,-25,25),...gArc(ox,oy,222,-25,25).reverse()],'avoid')+gR(gPL-12,oy,ox,gPB+6,'coord')+gR(176,132,248,166,'phys');
+    s+=circ(2.0)+` class="gp-rg" style="fill:${GPC.other[1]}"/>`+circ(1.2)+` class="gp-rg" style="fill:${GPC.coord[1]}"/>`+circ(0.8)+` class="gp-rg" style="fill:${GPC.coord[1]};fill-opacity:.35"/>`;
+    s+=`<line class="gp-ax" x1="40" y1="${oy}" x2="${gW-8}" y2="${oy}"/><line class="gp-ax" x1="${ox}" y1="${gPB+12}" x2="${ox}" y2="8"/>`+gT(gW-10,oy-6,'R',{a:'end'})+gT(ox+6,18,'X');
+    s+=circ(2.0)+` class="gp-dl"/>`+circ(1.2)+` class="gp-cv" style="stroke:var(--amber)"/>`+circ(0.8)+` class="gp-cv"/>`;
+    s+=gL([[ox,oy],P(1)],'gp-cv" style="stroke:var(--ink)')+gL([P(1),P(1.75)],'gp-dl');
+    const f=P(0.5); s+=`<line class="gp-vec" style="stroke:var(--fault)" x1="${f1(f[0])}" y1="${f1(f[1])}" x2="${f1(f[0]+44)}" y2="${f1(f[1])}"/>`+gT(f[0]+46,f[1]+4,'Rf',{c:'gp-tn'});
+    s+=`<circle class="gp-rg" style="fill:${GPC.phys[1]};fill-opacity:.4" cx="${ox}" cy="${oy}" r="11"/>`;
+    s+=gT(P(1.5)[0]+6,P(1.5)[1]+4,'線路 Z',{c:'gp-tn'})+gT(318,oy-34,'負荷',{c:'gp-tm'})+gT(P(0.8)[0]+6,P(0.8)[1]+2,'Z1',{c:'gp-tn'})+gT(P(1.2)[0]+6,P(1.2)[1]+2,'Z2',{c:'gp-tn'})+gT(P(2)[0]+6,P(2)[1]+6,'Z3',{c:'gp-tn'});
+    return s+gB(...P(0.38),1)+gB(...P(1.05,95),2)+gB(...P(1.65,95),3)+gB(345,oy-14,4)+gB(234,150,5)+gB(ox-16,oy+12,6)+gB(78,oy+12,7); },
+  items:[
+    {t:'第 1 段 Z1（80 %・瞬時）', r:[['coord','100 % にしないのは、CT・VT の誤差や線路定数の誤差で、隣の区間の事故まで瞬時に切らない（オーバーリーチを防ぐ）ため。']]},
+    {t:'第 2 段 Z2（120 %・0.4 s）', r:[['coord','第 1 段が届かない末端の 20 % を確実に見る。隣の区間に入る分は、隣の主保護が先に切るように 0.4 s 待つ。']]},
+    {t:'第 3 段 Z3（後備）', r:[['other','隣の区間の継電器や遮断器が働かなかったときの後備。さらに遅い時限で切る（シミュレータには入れていない）。']]},
+    {t:'負荷の領域', r:[['avoid','重い負荷のときの見かけのインピーダンスは R 軸の近くに来る。動作域がここにかからないよう、円の大きさや形（ブラインダ）を決める。']]},
+    {t:'R の方向（高抵抗の事故）', r:[['phys','事故抵抗 Rf があると Z は右へずれ、円の外へ出る（アンダーリーチ）。円の特性は R の方向に弱い。'],['other','四辺形の特性で R の方向を広げるか、地絡は地絡方向継電器で見る。']]},
+    {t:'原点（すぐ前の事故）', r:[['phys','継電器のすぐ前の三相短絡では電圧がほぼ 0 で、向きが決めにくい。事故前の電圧を記憶して使う。']]},
+    {t:'原点より後ろ', r:[['coord','円が原点を通るので、後方の事故では Z が円に入らない。モー特性はそれ自体が方向性を持つ。']]}]},
+fr:{svg(){ const X=gNx(57,62.5), Y=gLy(0.01,100);
+    let s=gR(X(59.8),gPT,X(60.2),gPB,'avoid')+gR(gPL,gPT,X(59),Y(0.3),'coord')+gR(gPL,Y(0.3),X(59),Y(0.05),'avoid')+gR(gPL,gPT,X(57.5),gPB,'equip')+gR(X(61),gPT,gPR,Y(0.3),'coord')+gR(gPL,Y(0.05),gPR,gPB,'phys');
+    s+=gFrame([57,58,59,60,61,62].map(v=>[X(v),String(v)]),[[Y(0.01),'0.01'],[Y(0.1),'0.1'],[Y(1),'1'],[Y(10),'10'],[Y(100),'100']],'周波数（Hz、60 Hz 系統）','続く時間 s（対数）');
+    s+=gL([[X(59),gPT],[X(59),Y(0.3)],[gPL,Y(0.3)]])+gL([[X(61),gPT],[X(61),Y(0.3)],[gPR,Y(0.3)]])+gL([[X(58.5),gPT],[X(58.5),Y(0.6)],[gPL,Y(0.6)]],'gp-dl');
+    s+=gT(X(59.05),Y(0.45),'UFR 59.0 Hz',{c:'gp-tn'})+gT(X(61.05),Y(0.45),'OFR 61.0 Hz',{c:'gp-tn'})+gT(X(58.45),Y(60),'次の段（例）',{a:'end',c:'gp-tn'});
+    return s+gB(X(60),Y(1),1)+gB(X(58.2),Y(5),2)+gB(X(58.2),Y(0.12),3)+gB(X(57.25),Y(5),4)+gB(X(61.8),Y(5),5)+gB(X(59),Y(0.02),6)+gB(X(60),Y(30),7); },
+  items:[
+    {t:'60 Hz のまわり：動かない', r:[['avoid','平常でも需給の変動で周波数は ±0.1〜0.2 Hz 程度動く。これでは動かない。']]},
+    {t:'UFR の段', r:[['coord','一度に切りすぎない（切りすぎると周波数が上がりすぎる）よう、周波数と時限を少しずつ変えた段で、段階的に負荷を切る。']]},
+    {t:'時限より短い低下：見送る', r:[['avoid','事故の直後は電圧の位相が跳び、周波数が一瞬ずれて見える。時限（0.3 s）と電圧の条件で見送る。']]},
+    {t:'もっと低い周波数', r:[['equip','タービンの羽根の共振を避けるため、発電機にも運転できる周波数の下限がある。そこまで下がれば発電機側の保護が解列する。']]},
+    {t:'OFR の動作域', r:[['coord','負荷が抜けて周波数が上がったら、発電機の一部を解列して需給を戻す。']]},
+    {t:'0.05 s より速い現象', r:[['phys','周波数は波の間隔から求めるので、測るだけで数サイクルかかる。短絡のような速い事故には使えない。']]},
+    {t:'単独運転でつり合ったとき', r:[['phys','系統側が切れても、自家発・PV の出力と構内の負荷がつり合っていれば、周波数はほとんど動かない。'],['other','能動的な単独運転検出（無効電力の変動などを加えて揺さぶる）や転送遮断が受け持つ。']]}]},
+rpr:{svg(){ const cx=225, cy=112, band=30;
+    let s=gR(cx,gPT,gPR,gPB,'avoid')+gR(cx-band,gPT,cx,gPB,'avoid')+gR(gPL,gPT,cx-band,gPB,'coord');
+    s+=`<line class="gp-ax" x1="${gPL}" y1="${cy}" x2="${gPR}" y2="${cy}"/><line class="gp-ax" x1="${cx}" y1="${gPB}" x2="${cx}" y2="${gPT}"/>`;
+    s+=gL([[cx-band,gPT],[cx-band,gPB]])+gT(cx-band-4,gPB-6,'−25 kW（定格の 5 %）',{a:'end',c:'gp-tn'});
+    s+=gT(gPR-4,cy-6,'P',{a:'end'})+gT(cx+6,gPT+12,'Q')+gT(cx+70,cy+40,'受電',{c:'gp-tm'})+gT(gPL+20,cy+40,'逆潮流',{c:'gp-tm'})+gT((gPL+gPR)/2,gH-5,'有効電力 P（右が受電、左が逆潮流）',{a:'middle'});
+    return s+gB(cx+90,cy-40,1)+gB(cx-band/2,cy-40,2)+gB(gPL+50,cy-40,3)+gB(cx,gPT+34,4); },
+  items:[
+    {t:'受電の側：動かない', r:[['avoid','系統から電力を買っている状態。平常の運転。']]},
+    {t:'小さな逆潮流：動かない', r:[['avoid','CT・VT の誤差や、負荷が急に変わった瞬間の振れで動かないよう、整定は定格の数 %（ここでは 5 %）にする。']]},
+    {t:'整定を越える逆潮流が続く：動作', r:[['coord','逆潮流なしの契約で連系しているので、電力を系統へ送り出したら発電機を解列する。一瞬の振れで切らないよう時限（0.5 s）をつける。']]},
+    {t:'縦軸（無効電力）', r:[['phys','RPR は有効電力の向きだけを見る。無効電力の向きは判定に入らない。']]}]}
+};
+
+/* ===== 抜け穴と、それを埋める組み合わせ（継電器ごと） ===== */
+const MISS={
+ocr:{combo:'短絡は OCR、地絡は GR か DGR、雷は LA、変圧器とコンデンサの短絡は PF、低圧は MCCB と ELCB。受電設備ではこの組み合わせで穴を埋める。', col:'ocr', items:[
+  ['small','短絡電流が小さくて気づかない','遠い短絡、アークを伴う短絡、INV だけが電源の短絡は、電流が整定値に届かない。事故が続いてケーブルが焼け、火災になる。','末端は下流の MCCB・ヒューズ、送電線は距離継電器（V / I で測る）、INV の連系は UVR。'],
+  ['blind','低圧の地絡は接地抵抗で電流が絞られる','100 V 回路で外箱に地絡すると、電流は B 種接地（例 10 Ω）と D 種接地（例 100 Ω）を通る。100 V ÷ 110 Ω ≈ 0.9 A で、MCCB も OCR も動かない。外箱には約 91 V が残り、触れると感電する。','漏電遮断器（ELCB、例 30 mA・0.1 s 以内）。'],
+  ['blind','高圧の地絡は数 A','非接地系の地絡電流は対地静電容量で決まり数 A。数百 A で整定する OCR には見えない。','GR（51G）・DGR（67G）・OVGR（64）。'],
+  ['fast','雷は速すぎる','雷サージは数 μs〜数十 μs で、継電器が測り終える前に終わる。機器の絶縁が先に破れる。','避雷器（LA）で大地へ逃がす。破れたあとの続流は OCR が切る。'],
+  ['false','励磁突入電流で動く','変圧器を入れた瞬間に定格の数倍〜10 倍程度の電流が流れる。瞬時要素を低くしすぎると、事故でもないのに切る。','瞬時要素を突入電流より上に整定する。差動継電器は第 2 高調波で止める。']]},
+ocgr:{combo:'非接地系の高圧需要家の地絡保護。PAS の SOG（地絡）・受電盤の GR・変電所の F67G を時限で協調させる。構内ケーブルが長い需要家は DGR にする。', col:'ocgr', items:[
+  ['small','高抵抗地絡（事故抵抗・接地抵抗が大きい）','樹木の接触や絶縁劣化の初めは、事故抵抗が数 kΩ 以上になる。I0 が 0.2 A に届かず、漏電がずっと続く。発火・感電の元になる。','高圧用の絶縁監視・劣化診断、停電しての絶縁抵抗の測定。低圧用の Ior 方式は B 種接地線の漏れ電流を見るもので、高圧側の地絡は見えない。'],
+  ['false','もらい事故','構外の地絡でも、自構内ケーブルの対地静電容量から I0 が流れ出す（100 m あたり約 0.14 A）。ケーブルが長いと整定を越え、自分が停電する。','DGR（67G）で向きを見る。'],
+  ['blind','ZCT より電源側の地絡は範囲の外','ZCT より電源側の地絡は、この GR と遮断器では切り離せない。しかも負荷側ケーブルの充電電流が ZCT を通るので、整定を越えると不要に動くこともある。','電源側は一つ上の保護（PAS の地絡継電器、変電所の F67G）が受け持つ。保護の境目は ZCT を置いた場所で決まる。'],
+  ['device','ケーブルのシールドの接地線の通し方','シールドの接地線の扱いを誤ると、地絡電流が ZCT の中で打ち消され、動かなかったり不要動作したりする。','施工の確認と、竣工時の動作試験。']]},
+ovr:{combo:'自家発・INV の連系保護として UVR・OVR・UFR・OFR・OVGR を組で置く。速い過電圧は LA、地絡による対地電圧の上昇は OVGR が受け持つ。', col:'ovr', items:[
+  ['fast','雷・開閉サージ','μs〜ms の過電圧は、定限時（1 s 前後）の OVR では間に合わない。','避雷器（LA）・サージアブソーバ。'],
+  ['blind','地絡で上がる対地電圧','非接地系の 1 線地絡では、健全相の対地電圧が √3 倍に上がる。線間電圧は変わらないので OVR には映らない。','OVGR（64）で V0 を見る。'],
+  ['small','整定より少し高い電圧が長く続く','PV の逆潮流で配電線の末端の電圧が少し上がっても、OVR の整定（110〜120 %）には届かない。機器の寿命が縮む。','PCS の電圧上昇抑制（出力抑制・力率一定制御）、配電線の電圧調整器（SVR）。']]},
+ovgr:{combo:'V0 は配電線全体で同じなので、場所を見分ける DGR（67G）と組む。OVGR は時限を長めにした後備や、連系の地絡検出に使う。', col:'ovgr', items:[
+  ['blind','どこの地絡か分からない','V0 は配電線のどこで地絡しても同じように出る。OVGR だけでは自構内か構外か区別できない。','DGR（I0 の向き）と組む。OVGR の時限を DGR より長くして、構内の地絡は DGR に先に切らせる。'],
+  ['small','事故抵抗が大きいと V0 が小さい','この例の系統では Rf が 30 kΩ で V0 が約 10 %。整定 10 % ぎりぎりで、それより大きい Rf の地絡は見えない。','整定を下げると平常時の残留電圧で誤動作するので、絶縁監視と組み合わせる。'],
+  ['false','平常時の残留電圧','3 相の対地静電容量がそろっていないと、事故がなくても V0 が少し出る。整定を下げすぎると不要動作する。','残留電圧を測ってから整定を決める。']]},
+uvr:{combo:'停電の検出、非常用発電機の起動、自家発・INV の連系保護（UVR・OVR・OVGR・UFR・OFR・単独運転検出）。逆変換装置の連系では、系統側の短絡を OCR ではなく UVR で見る。', col:'uvr', items:[
+  ['device','VT のヒューズ切れで誤動作','VT の二次回路が切れると、系統が正常でも電圧 0 に見える。','電流が流れているか、3 相の電圧がそろって下がったかを組み合わせる。'],
+  ['blind','停電しても電圧が残る','系統側が切れても、自家発・PV・回っている電動機が電圧を支えると、電圧が下がらない。','単独運転検出（周波数・位相の急変、能動的方式）、転送遮断。'],
+  ['fast','一瞬の電圧低下','遠くの事故による 0.1 s 前後の低下は時限（1 s）で見送る。その間に電磁接触器が開いたり、電動機が減速したりする。','機器側の瞬停対策（遅れて開く接触器、UPS）。']]},
+dsr:{combo:'同期発電機の連系で、系統側の短絡を見る。構内の短絡は OCR、INV の連系では UVR が受け持つ。送電線では距離継電器と組む。', col:'dsr', items:[
+  ['blind','すぐ前の三相短絡で電圧がほぼ 0','向きの基準の電圧が消え、向きが決められない。','事故の前の電圧を記憶して基準にする（メモリ作用）。OCR の瞬時要素も重ねる。'],
+  ['small','INV からの電流は小さく、位相も制御しだい','INV は定格の 1〜1.5 倍程度しか流さず、電流の向きも制御で決まる。同期機を想定した DSR は動かないことがある。','系統連系規程でも、逆変換装置を使う発電設備は、系統側の短絡を UVR で検出する。'],
+  ['false','平常時の逆潮流','自家発の出力が構内の負荷より大きいと、平常時も前方へ電流が流れる。整定が低すぎると動く。','整定を最大の逆潮流電流より上にし、時限（0.2 s）をつける。']]},
+dgr:{combo:'PAS の SOG・受電盤の DGR・変電所の F67G を時限で協調させる。V0 は OVGR（64）と共用する。', col:'dgr', items:[
+  ['small','高抵抗地絡','I0 と V0 の両方が整定を越えないと動かない（AND 条件）。事故抵抗が大きいと、どちらかが届かない。','絶縁監視、定期点検。'],
+  ['device','V0 の回路（ZPD・GPT）の不良','V0 が入らないと、構内の地絡でも動かない。','竣工時・定期の試験で、V0 と I0 の両方の回路を確かめる。'],
+  ['false','雷による一瞬の I0 と V0','雷で一瞬 I0 と V0 が出ることがある。','LA と時限（0.2 s）で見送る。']]},
+dfr:{combo:'変圧器では T87（主保護）、TP51・TS51（後備の過電流）、96（ブッフホルツ）を組む。外部事故での誤動作を防ぐため、実際は比率差動を使う。', col:'diff', items:[
+  ['false','外部事故で CT が飽和する','区間の外の大きな事故で片方の CT が飽和すると、差電流が出て誤動作する。','比率差動（RDFR）。'],
+  ['false','励磁突入電流','変圧器を入れた瞬間、一次側にだけ大きな電流が流れ、差電流に見える。','第 2 高調波が多いときは動作を止める。'],
+  ['small','巻線の層間短絡','数ターンの短絡では、端子に出る差電流が小さい。中で油が分解し、ガスがたまっていく。','ブッフホルツ継電器（96、ガスと油の流れ）、衝撃圧力継電器。'],
+  ['blind','区間の外の事故','差動は CT と CT の間しか見ない（これが長所）。','区間の外は OCR（TP51・TS51）や距離継電器が、後備も含めて受け持つ。']]},
+rdfr:{combo:'T87（主保護）＋ TP51・TS51（後備）＋ 96（ブッフホルツ）。比率の斜線で CT 誤差に耐え、第 2 高調波で突入を止め、差動瞬時要素で大事故に備える。', col:'diff', items:[
+  ['small','斜線の下に入る内部事故','比率を上げるほど外部事故に強くなるが、内部の小さな事故（層間短絡、中性点の近くの地絡）が見えにくくなる。','96（ブッフホルツ）。接地された Y 巻線の中性点に近い地絡には、地絡専用の差動（REF）。'],
+  ['false','CT 誤差が比率の限度を越える','比率 40 % なら、CT 誤差がおよそ 33 % を超えると外部事故でも動く（このシミュレータで確かめられる）。','飽和しにくい CT を選ぶ、2 段の比率。'],
+  ['device','CT の結線・タップの設定ミス','結線や変圧器のタップ、Δ-Y の位相補正を誤ると、負荷電流だけで差電流が出る。','送電前の負荷試験で、差電流がほぼ 0 か確かめる。']]},
+dr:{combo:'送電線では、電流差動か距離継電器の第 1 段を主保護に、第 2・第 3 段を後備にする。地絡方向継電器も重ね、再閉路と組む。', col:'dr', items:[
+  ['small','事故抵抗が大きい','Z が R の方向へずれて円の外へ出る（アンダーリーチ）。','四辺形特性、地絡方向継電器、両端の情報を使う方式（搬送保護）。'],
+  ['blind','末端 20 % の事故は第 2 段まで待つ','第 1 段は 80 % までなので、相手端に近い事故は 0.4 s 待つ。安定度には厳しい。','両端の判定を通信で交換する搬送保護、電流差動。'],
+  ['false','電力動揺','系統が大きく揺れると、事故でなくても見かけのインピーダンスが円の中を通る。同期を保つ安定な動揺でも起きる。','動揺を検出して距離要素を止める（電力動揺ブロック）。同期を失う脱調には、決めた場所で系統を分ける脱調分離を別に用意する。'],
+  ['device','VT のヒューズ切れ','電圧が 0 に見え、Z が 0 になって誤動作する。','VT の異常を検出して動作を止める。']]},
+fr:{combo:'系統では UFR の段階的な負荷遮断と、事故の大きさから切る量を事前に決める系統安定化装置を組む。連系では UFR・OFR と単独運転検出を組む。', col:'fr', items:[
+  ['blind','単独運転でつり合っている','系統側が切れても、自家発・PV の出力と構内の負荷がつり合うと、周波数は動かない。','能動的な単独運転検出、転送遮断。'],
+  ['fast','測るのに数サイクルかかる','周波数は波の間隔から求めるので、測るだけで数サイクルかかる。短絡のような速い事故には使えない。','短絡・地絡はそれぞれの継電器。'],
+  ['small','段が追いつかない大きな電源脱落','一度に大きな電源が落ちると、UFR の段で切り終える前に周波数が下がりきり、発電機が次々に解列する。','系統安定化装置（事故を見て事前に決めた量をすぐに切る）、周波数変化率（RoCoF）の継電器。'],
+  ['false','事故直後の位相の跳び','近くの事故の直後は電圧の位相が跳び、周波数が一瞬大きくずれて見える。','時限と、電圧が低いときは止める条件。']]},
+rpr:{combo:'逆潮流なしの契約で自家発を連系するときに置く。構内の事故は OCR・GR、系統側の事故は UVR・OVGR・DSR、単独運転は UFR や不足電力継電器と組む。', col:'rpr', items:[
+  ['device','1 相だけで測る','1 相の電力 × 3 で推定すると、負荷が不平衡なとき 3 相の合計とずれ、逆潮流を見逃したり誤って動いたりする（このシミュレータで試せる）。','3 相の電力で検出する。'],
+  ['small','整定より小さい逆潮流','誤差を避けるため整定は定格の数 % にする。それより小さい逆潮流は見逃す。','発電機の出力を制御して、受電電力を一定以上に保つ。'],
+  ['blind','系統側が切れたあとの電力は場所しだい','構内だけが切り離されたなら、受電点の電力はほぼ 0 で、逆潮流ではないので RPR は動かない。ほかの需要家を含む島になると、そちらへ逆潮流して RPR が動くこともある。切れた場所と島の中の需給で決まる。','UFR、不足電力継電器（UPR）、単独運転検出。']]}
+};
+
+/* 継電器の画面に「特性の形の理由」と「抜け穴と組み合わせ」を足す（paintExplain から呼ばれる） */
+function paintExtra(g, id){ const w=WHY[id], m=MISS[id]; if(!w||!m) return;
+  const cats=[...new Set(w.items.flatMap(it=>it.r.map(x=>x[0])))];
+  g.insertAdjacentHTML('beforeend', `<div class="card exc why wide"><h3><span class="chip" style="background:var(--s2)">形</span>特性の形の理由：その領域はだれが、なぜ</h3>
+    <div class="gp-why-wrap"><div>${gSvg(w.svg(), RELAYS.find(r=>r.id===id).name+'の特性の模式図。番号の領域ごとに理由がある')}<div class="gp-leg">${cats.map(c=>gpChip(GPC,c)).join('')}</div></div>
+    <ol class="gp-items">${w.items.map((it,i)=>`<li><span class="gp-n">${i+1}</span><div><b>${it.t}</b>${it.r.map(([c,t])=>`<p>${gpChip(GPC,c)}${t}</p>`).join('')}</div></li>`).join('')}</ol></div></div>
+  <div class="card exc gaps wide"><h3><span class="chip" style="background:var(--fault)">穴</span>抜け穴と組み合わせ：この継電器では守れない事故</h3>
+    <div class="gp-miss">${m.items.map(([c,t,d,f])=>`<div class="gp-m">${gpChip(GPM,c)}<b>${t}</b><p>${d}</p><p class="fx">${f}</p></div>`).join('')}</div>
+    <div class="gp-combo"><p><b>組み合わせ</b>　${m.combo}</p><button class="ghost" data-gapcol="${m.col}">カバー表で見る</button></div></div>`); }
+$('exgrid').addEventListener('click',e=>{ const b=e.target.closest('[data-gapcol]'); if(!b) return; stopTour(); setView('gaps'); gpSelect(null,b.dataset.gapcol); $('viewGaps').scrollIntoView({block:'start'}); });
+
+/* ===== カバー表 ===== */
+const GSYM={'●':['gs-p','受け持つ'],'○':['gs-b','後備・条件つき'],'△':['gs-c','届かないことがある'],'×':['gs-x','見えない・間に合わない'],'!':['gs-f','誤って動くおそれ（整定・時限で避ける）']};
+const GCOLS=[['LA','LA','避雷器'],['PF','PF','限流ヒューズ'],['MCCB','MCCB','配線用遮断器'],['ELCB','ELCB','漏電遮断器'],['ocr','51','OCR'],['ocgr','51G','GR'],['dgr','67G','DGR'],['ovgr','64','OVGR'],['dsr','67S','DSR'],['uvr','27','UVR'],['ovr','59','OVR'],['fr','95','FR'],['rpr','67P','RPR'],['diff','87','差動'],['dr','44','距離'],['bh','96','ブッフホルツ'],['ins','絶縁監視','漏れ電流の監視'],['isl','単独','単独運転検出']];
+const GROWS=[
+  {g:'短絡'},
+  {t:'近い短絡（大電流）', harm:'ケーブル・母線の焼損、電磁力による変形、アーク火災。', memo:'いちばん見つけやすい事故。課題は、どれが先に切るか（協調）。', c:{PF:['●','変圧器・コンデンサの回路を、電流が上がりきる前に切る（限流）'],MCCB:['●','低圧の回路（瞬時）'],ocr:['●','瞬時要素'],diff:['●','区間の中なら瞬時'],dr:['●','第 1 段'],dsr:['○','自家発から系統側へ流れる向きなら'],uvr:['○','電圧が下がる（後備）']}},
+  {t:'遠い短絡・アーク短絡（電流が小さい）', harm:'アークが続いて火災、ケーブルの過熱。', memo:'電流の大きさだけで見る装置は感度が足りなくなる。', c:{ocr:['△','整定値に届かないことがある'],MCCB:['△','同じ'],dr:['●','V / I で測るので電流の大きさに左右されにくい'],diff:['●','区間の中なら'],uvr:['○','電圧の低下で後備']}},
+  {t:'INV だけが電源の短絡', harm:'事故点のアークが続く。系統が戻ったときに非同期で投入される。', memo:'INV の事故電流は定格の 1〜1.5 倍程度で頭打ちになり、過負荷と区別できない。', c:{ocr:['×','電流が整定に届かない'],dsr:['×','電流が小さく、位相も制御しだい'],uvr:['●','逆変換装置の連系では、系統側の短絡を電圧低下で見る'],dr:['△','測距が不安定'],isl:['○','系統側が切れたあと']}},
+  {g:'地絡'},
+  {t:'高圧の地絡（非接地系・構内）', harm:'健全相の対地電圧が √3 倍に上がり、2 線地絡（短絡）へ進む。感電・火災。', memo:'地絡電流は配電線全体の対地静電容量で決まり、数 A。', c:{ocr:['×','数 A しか流れない'],PF:['×','同じ'],ocgr:['●','ZCT より負荷側'],dgr:['●','I0 の向きで構内と判定'],ovgr:['○','後備。場所は分からない'],ovr:['×','線間電圧は変わらない']}},
+  {t:'高抵抗地絡（事故抵抗・接地抵抗が大きい）', harm:'漏電が続き、樹木の発火や感電につながる。', memo:'事故抵抗が数 kΩ を越えると、I0 も V0 も小さくなる。継電器では埋めきれないので、絶縁監視と点検で劣化を先に見つける。', c:{ocgr:['△','I0 が整定に届かない'],dgr:['△','I0 か V0 が届かない'],ovgr:['△','Rf 30 kΩ で V0 約 10 %'],ocr:['×',''],ins:['○','高圧用の絶縁監視・劣化診断で、事故になる前に劣化を見つける']}},
+  {t:'構外の地絡（もらい事故）', harm:'自分の構内が、関係のない事故で停電する。', memo:'正しい動作は「動かない」こと。', c:{ocgr:['!','ケーブルが長いと、自構内の静電容量が流す I0 で動く'],dgr:['●','向きで見送る（正しく動かない）'],ovgr:['○','自家発があれば、系統側の地絡として自家発を解列する（V0 だけでは場所は分からない）']}},
+  {t:'低圧の地絡（B 種接地あり）', harm:'外箱に約 90 V が出て感電。漏電火災。', memo:'100 V ÷（B 種 10 Ω ＋ D 種 100 Ω）≈ 0.9 A。電流は接地抵抗で絞られ、外箱の電圧は 0.9 A × 100 Ω ≈ 91 V。', c:{MCCB:['×','約 1 A では動かない'],ocr:['×',''],ELCB:['●','30 mA で検出'],ins:['○','低圧の Ior 方式などで漏れ電流を常に測る']}},
+  {g:'速すぎる・遅すぎる'},
+  {t:'雷サージ（μs）', harm:'絶縁破壊。破れたあとの続流は、短絡・地絡として継電器が切る。', memo:'継電器と遮断器は合わせて数十 ms 以上かかる。μs の現象には避雷器しか間に合わない。', c:{LA:['●','大地へ逃がして電圧を抑える'],ocr:['×','速すぎる'],ovr:['×','速すぎる'],diff:['×','速すぎる'],ocgr:['!','一瞬の I0。時限で見送る'],dgr:['!','同じ']}},
+  {t:'過負荷（定格の 1.2〜2 倍）', harm:'ケーブル・変圧器の過熱、絶縁の劣化。', memo:'事故ではないので速く切る必要はないが、長く続けば壊れる。', c:{MCCB:['●','熱動・長限時要素'],ocr:['○','整定を越えた分だけ、反限時でゆっくり'],PF:['×','最小遮断電流より小さい電流は切れず、溶けかけて壊れる']}},
+  {g:'機器の中'},
+  {t:'変圧器の内部事故（巻線の層間短絡）', harm:'油が分解してガスが出て、変圧器の破裂・火災につながる。', memo:'外から見える電流の変化は小さいが、中では事故が進む。', c:{diff:['△','数ターンだと差電流が小さい'],bh:['●','ガスと油の流れで検出'],ocr:['×',''],PF:['△','']}},
+  {t:'変圧器の励磁突入（事故ではない）', harm:'投入のたびに止まる（不要動作）。', memo:'一次側にだけ大きな電流が流れ、内部事故と同じ形に見える。', c:{diff:['!','第 2 高調波で止める'],ocr:['!','瞬時要素を突入電流より上に'],PF:['!','突入に耐える定格を選ぶ']}},
+  {g:'系統・連系'},
+  {t:'単独運転（発電と負荷がつり合う）', harm:'停電のはずの線路が充電されたまま（作業者の感電）。再閉路で非同期に投入される。', memo:'電圧も周波数も動かないので、ふつうの継電器には見えない。', c:{isl:['●','受動的方式と能動的方式'],fr:['△','周波数が動かない'],uvr:['△','電圧が下がらない'],ovr:['△','同じ'],rpr:['△','構内だけの島なら電力は 0 付近（不足電力継電器で見る）。島が広いと逆潮流で動くこともある']}},
+  {t:'周波数の低下（大きな電源の脱落）', harm:'発電機が次々に解列して広域停電。', memo:'', c:{fr:['●','UFR で段階的に負荷を切る']}},
+  {t:'電圧上昇（PV の逆潮流・AVR の故障）', harm:'需要家の機器の損傷。', memo:'少しの上昇は PCS の電圧上昇抑制が先に受け持つ。', c:{ovr:['●','']}},
+  {t:'送電線の事故（区間の中か外か）', harm:'区別を誤ると、健全な区間まで停電する。', memo:'', c:{diff:['●','電流差動。区間の中だけ瞬時'],dr:['●','第 1 段が区間の中、第 2・3 段が後備'],ocr:['○','後備。区間の区別は時限で']}},
+  {t:'逆潮流（逆潮流なしの契約）', harm:'配電線の電圧上昇、作業の安全。', memo:'', c:{rpr:['●','']}}
+];
+const GTYPES=[['small','電流や電圧が整定に届かない（事故抵抗・遠い事故・INV）'],['fast','現象が継電器の動作より速い（雷サージ）'],['blind','見ている量に事故が出てこない（低圧の地絡と接地抵抗、単独運転）'],['false','事故でないのに動く（励磁突入・もらい事故・電力動揺）'],['device','CT 飽和・VT のヒューズ切れ・結線の誤り']];
+let gpRow=null, gpCol=null, gapsBuilt=false;
+function buildGaps(){ if(gapsBuilt) return; gapsBuilt=true;
+  $('gpTypes').innerHTML=GTYPES.map(([k,t])=>`<div class="gp-type">${gpChip(GPM,k)}<br>${t}</div>`).join('');
+  $('gpSym').innerHTML=Object.entries(GSYM).map(([s,[c,t]])=>`<span><b class="${c}">${s}</b>${t}</span>`).join('');
+  let h=`<thead><tr><th class="gp-rh">事故・異常</th>${GCOLS.map(([k,n,d])=>`<th data-c="${k}"><button data-col="${k}" title="${d}"><b>${n}</b><small>${d}</small></button></th>`).join('')}</tr></thead><tbody>`;
+  GROWS.forEach((r,i)=>{ if(r.g){ h+=`<tr class="gp-gh"><th colspan="${GCOLS.length+1}">${r.g}</th></tr>`; return; }
+    h+=`<tr data-r="${i}"><th class="gp-rh"><button data-row="${i}">${r.t}</button></th>${GCOLS.map(([k])=>{ const c=r.c[k]; return `<td data-c="${k}"${c?` class="${GSYM[c[0]][0]}" title="${c[1]||GSYM[c[0]][1]}"`:''}>${c?c[0]:''}</td>`; }).join('')}</tr>`; });
+  $('gpTbl').innerHTML=h+'</tbody>';
+  $('gpSchemes').innerHTML=GSCHEMES.map(s=>`<div class="card gp-sc"><h3>${s.t}</h3><p class="why">${s.why}</p><ul>${s.li.map(([d,t])=>`<li><b>${d}</b>　${t}</li>`).join('')}</ul></div>`).join('');
+  if(gpRow==null && gpCol==null) gpSelect(GROWS.findIndex(r=>r.t&&r.t.startsWith('高抵抗')),null); }
+function gpSelect(row,col){ if(!gapsBuilt) buildGaps(); gpRow=row; gpCol=col;
+  $('gpTbl').querySelectorAll('tr[data-r]').forEach(tr=>tr.classList.toggle('sel',+tr.dataset.r===row));
+  $('gpTbl').querySelectorAll('[data-c]').forEach(td=>td.classList.toggle('colsel',td.dataset.c===col));
+  const D=$('gpDetail');
+  if(row!=null){ const r=GROWS[row];
+    D.innerHTML=`<h3>${r.t}</h3><p class="harm">${r.harm}</p>${r.memo?`<p style="margin:0 0 8px;font-size:14px">${r.memo}</p>`:''}<div class="gp-dl2">${GCOLS.filter(([k])=>r.c[k]).map(([k,n,d])=>{ const [s,t]=r.c[k]; return `<span class="s ${GSYM[s][0]}">${s}</span><span class="d">${n} <small>${d}</small></span><span>${t||GSYM[s][1]}</span>`; }).join('')}</div>`; return; }
+  const [k,n,d]=GCOLS.find(c=>c[0]===col), ids=k==='diff'?['dfr','rdfr']:RELAYS.some(x=>x.id===k)?[k]:[];
+  const rows=GROWS.filter(r=>r.c&&r.c[k]);
+  D.innerHTML=`<h3>${n}　${d}</h3><p style="margin:0 0 8px;font-size:14px">${COLNOTE[k]||''}</p><div class="gp-dl2">${rows.map(r=>{ const [s,t]=r.c[k]; return `<span class="s ${GSYM[s][0]}">${s}</span><span class="d" style="font-family:var(--f-body)">${r.t}</span><span>${t||GSYM[s][1]}</span>`; }).join('')}</div>${ids.length?`<p style="margin:10px 0 0">${ids.map(id=>`<button class="ghost" data-go-relay="${id}">${RELAYS.find(x=>x.id===id).name}の動きを見る</button>`).join(' ')}</p>`:''}`; }
+const COLNOTE={LA:'雷サージを大地へ逃がし、機器にかかる電圧を抑える。継電器では間に合わない μs の現象を受け持つ。',PF:'電流が上がりきる前に溶けて切る（限流）。変圧器やコンデンサの回路の短絡に強いが、小さな過電流は苦手。',MCCB:'低圧の短絡（瞬時）と過負荷（熱動・長限時）。地絡は電流が小さく見えないことが多い。',ELCB:'行きと帰りの電流の差（漏れ電流）を 30 mA などの小さな値で見る。接地抵抗で絞られた地絡電流も見える。',bh:'変圧器の油の中のガスと、油の急な流れで内部事故を見つける。電気の量ではなく、機械的に見る保護。コンサベータ付きの油入変圧器に使う。器具番号は 96（静止器内部故障検出装置）。',isl:'系統側が切れたあとも自家発・PV が運転を続ける状態を見つける。受動的方式（電圧位相の跳躍・周波数変化率など）は 0.5 s 以内、能動的方式（無効電力の変動などを加える）は 0.5〜1 s 程度が機種の例。どちらも配電線の再閉路（約 1 分）より前に解列する。',ins:'電路の絶縁の低下を常に測り、事故になる前に知らせる。低圧では B 種接地線の漏れ電流のうち、絶縁劣化による抵抗分（Ior）を見る方式が多い。これは低圧用で、高圧側の地絡は見えない。高圧には高圧用の絶縁監視・劣化診断を使う。継電器のように切るのではなく、点検を促す。',diff:'保護区間の両端の電流を比べる。区間の中だけを瞬時に切れるが、区間の外は見ない。'};
+const GSCHEMES=[
+  {t:'高圧受電設備（キュービクル）', why:'工場やビルの 6.6 kV 受電。単線結線図のタブはこの組み合わせを動かしている。', li:[['PAS（SOG 付き）','責任分界点の開閉器。地絡は自分で開く。短絡は切れないので過電流でロックし（SO）、変電所が切ったあとの無電圧で開く。'],['LA','雷サージを大地へ逃がす。'],['VCB＋51','構内の短絡。下流の MCCB と変電所の F51 の間に入るよう整定する。'],['51G / 67G','構内の地絡。構内ケーブルが長ければ 67G（DGR）。'],['PF＋LBS','変圧器・コンデンサの回路の短絡を限流して切る。'],['MCCB・ELCB','低圧の短絡・過負荷と、接地抵抗で電流が小さくなる地絡。']]},
+  {t:'自家発・INV の連系（高圧）', why:'系統へつなぐ発電設備は、系統側の事故で速やかに解列し、単独運転にならないようにする。', li:[['59・27','発電機の電圧の異常。'],['67S / 27','系統側の短絡。同期発電機は 67S（DSR）、INV は 27（UVR）。'],['64','系統側の地絡（V0）。'],['95L・95H','周波数の低下・上昇。'],['単独運転検出','逆潮流ありの連系では受動的方式と能動的方式。'],['67P','逆潮流なしの連系では逆電力を見る（RPR）。'],['FRT','系統の一瞬の電圧低下では解列せず運転を続ける（INV の要件）。']]},
+  {t:'変電所の変圧器と配電線', why:'器具番号の前の英字は保護対象（T＝変圧器、P＝一次側、S＝二次側、F＝配電線）。', li:[['T87','比率差動。変圧器の主保護。'],['96','ブッフホルツ。差動で見えない内部の小さな事故（コンサベータ付きの油入変圧器）。'],['TP51','一次側の過電流。変圧器の後備。'],['TS51','二次側の過電流。6.6 kV 母線の主保護。'],['F51・F67G','配電線の短絡・地絡。再閉路（約 1 分）と組む。']]},
+  {t:'送電線', why:'区間の中の事故だけを速く切り、すぐに再閉路して送電を戻す。', li:[['87L / 44','主保護。電流差動か、距離継電器の第 1 段（搬送で両端の判定を交換する方式も）。'],['44（第 2・3 段）','後備。隣の区間の保護が働かないとき。'],['67G','地絡方向。高抵抗の地絡を距離継電器より感度よく見る。'],['再閉路','送電線は高速度再閉路（約 1 s）。雷による事故の多くは一時的なので、これで戻る。'],['電力動揺ブロック','電力動揺で距離継電器が誤って動くのを止める。同期を失う脱調のときに系統を分ける脱調分離は、別の装置で受け持つ。']]}
+];
+$('gpTbl').addEventListener('click',e=>{ const r=e.target.closest('[data-row]'), c=e.target.closest('[data-col]'); if(r) gpSelect(+r.dataset.row,null); else if(c) gpSelect(null,c.dataset.col); });
+$('gpDetail').addEventListener('click',e=>{ const b=e.target.closest('[data-go-relay]'); if(!b) return; setView('relay'); selectRelay(b.dataset.goRelay); window.scrollTo({top:0,behavior:'smooth'}); });
+
+paintExplain();
+if(h0==='gaps') setView('gaps');
+</script>
