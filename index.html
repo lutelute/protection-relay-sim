@@ -388,7 +388,7 @@ footer{font-size:12px;color:var(--muted)}
       <dt>短絡電流</dt><dd>%Z 法 <small>基準 10 MVA。電源側 2+j5 %、配電線 1+j2 %、引込ケーブル 0.76+j0.25 %、T1 28+j85 %、低圧ケーブル 1.11+j0.45 %/m、自家発 X''d 400 %</small></dd>
       <dt>地絡</dt><dd>非接地系 <small>事故点とつながった範囲に電源（変電所か自家発）があれば V0 が出る。構内地絡の I0 ≒ 5 A（進み）、構外地絡は自構内ケーブルの充電電流 100 m あたり 0.14 A（遅れ）。PAS の地絡継電器の整定 0.2 A。変電所が切れた後に残る、この配電線だけの I0 は 1.5 A と仮定。変電所の F67G は配電線が 1 本なので、変電所側に V0 があるかだけで動かす（ほかの配電線の地絡との選別は扱わない）</small></dd>
       <dt>受電 OCR</dt><dd>NI <small>整定・レバー・瞬時要素は下で変えられる。VCB 開極 0.05 s</small></dd>
-      <dt>変電所</dt><dd>F51 600 A・NI・レバー 2 <small>F67G 0.9 s。再閉路は 1 回だけ。実際は約 1 分後だが、画面では 2 s に縮めている</small></dd>
+      <dt>変電所</dt><dd>F51 600 A・NI・レバー 2 <small>F67G 0.9 s。再閉路は 1 回だけ、約 1 分後（実時間。待つあいだに何も変わらなければ早送りする）</small></dd>
       <dt>MCCB1</dt><dd>150 AT <small>瞬時 10 倍で 0.015 s、長限時 80 / ((I/In)² − 1) s（0.1 s 以上）</small></dd>
       <dt>時間</dt><dd>動作と開極 <small>継電器が動作してから遮断器が開くまで MCCB 0.01 s、VCB・PAS 0.05 s、変電所 0.07 s。継電器は事故電流が消えるとすぐ戻る（瞬時復帰）。再閉路をまたいでタイマが残る効果や、誘導円板の慣性は扱わない（実機の誘導円板形はゆっくり戻る）</small></dd>
     </dl></div>
@@ -1860,8 +1860,8 @@ function sldDevices(Q){ const D=[
   D.forEach(d=>{ d.pick=I=>d.elems.some(e=>e.pick(I)); d.t=I=>Math.min(...d.elems.filter(e=>e.pick(I)).map(e=>e.t(I)), Infinity); });
   return D; }
 const SO_LOCK=800;
-/* 再閉路：日本の高圧配電線では、変電所の遮断器が開いてから約 1 分後に入れ直すのが一般的。画面では 2 秒に縮めて見せる */
-const RECLOSE=2.0, RECLOSE_REAL='約 1 分';
+/* 再閉路：日本の高圧配電線では、変電所の遮断器が開いてから約 1 分後に入れ直すのが一般的。実時間で待ち、そのあいだ何も変わらなければ早送りする */
+const RECLOSE=60, RECLOSE_REAL='約 1 分';
 /* 地絡の零相電流（ZCT を流れる I0）。構内の地絡は配電線側の対地静電容量から来る（進み）。
    構外の地絡では、自分の構内ケーブルの充電電流が外へ向かって流れる（CV 60 mm² 100 m あたり約 0.14 A、遅れ） */
 /* 変電所が切れた後も PAS の電源側に残る、この配電線だけの対地静電容量からの I0 は 1.5 A と仮定する */
@@ -1903,10 +1903,10 @@ function sStep(dt){
     if(cb==='52S'){ S_.rc.tOpen=S_.t; if(S_.rc.count>=1){ S_.rc.lockout=true; S_.rc.teLock=S_.te; sLog('再閉路しても事故が残っていた → 変電所はロックアウト（長時間の停電）','bad', SPOS['52S']); } } } });
   /* 再閉路：変電所の遮断器を 1 回だけ入れ直す */
   if(S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && S_.t-S_.rc.tOpen>=RECLOSE){ S_.open['52S']=false; S_.rc.count=1; S_.rc.tOpen=null; S_.rc.tRe=S_.t; S_.rc.teRe=S_.te;
-    sLog(`変電所の遮断器を再閉路（実際は${RECLOSE_REAL}後。ここでは ${RECLOSE} s に縮めている）`, 'cb', SPOS['52S']);
+    sLog(`変電所の遮断器を再閉路（${RECLOSE_REAL}後）`, 'cb', SPOS['52S']);
     ['socr','sdg'].forEach(k=>Object.assign(D[k],{tripped:false,prog:0,el:{},pick:false,status:'待機',tTrip:null,tOpen:null}));
     const isl=sIsland(S_.open,'S');
-    if(Q.gen && !S_.open['52G'] && isl.has('G')) sLog('自家発が解列しないまま再閉路した → 非同期で投入され、発電機や系統を傷める','bad', SPOS['52G']);
+    if(Q.gen && !S_.open['52G'] && isl.has('G')) sLog('自家発が解列しないまま再閉路した（同期を確かめない投入で、非同期投入のおそれ。発電機や系統を傷める）','bad', SPOS['52G']);
     if(S_.ev && isl.has(SFP[Q.loc].node)){ S_.rc.onFault=true; sLog('事故点はまだ配電線につながっている → 変電所の継電器がもう一度検出する','pick', SPOS['52S']); } }
   const f=SFP[Q.loc], fNode = S_.ev ? f.node : null, lg = Q.kind==='lg';
   const r = sldSolve(Q, S_.open, (S_.ev && !lg) ? fNode : null); S_.r=r;
@@ -1956,6 +1956,9 @@ function sStep(dt){
     sLog(S_.open.PAS ? '再閉路成功。ほかの需要家は復電した。この工場は PAS で切り離したまま' : '再閉路成功。配電線は復電した', 'cb', SPOS['52S']); }
   S_.hist.push({t:S_.t, te:S_.te, I:{rocr:D.rocr.I, socr:D.socr.I, mccb:D.mccb.I}});
   if(S_.hist.length>1200) S_.hist.shift();
+  /* 再閉路を待つあいだ、何も変わらなければ早送りする（待ち時間は実時間のまま） */
+  if(S_.ev && S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && !SROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped) && !Object.values(S_.opening).some(Boolean) && !(so.locked && !S_.open.PAS) && !S_.pasHold){
+    const tn=S_.rc.tOpen+RECLOSE-dt; if(tn>S_.t+0.05){ const j=tn-S_.t; S_.t+=j; S_.te+=j; sLog(`（何も変わらないので ${j.toFixed(1)} s 早送り）`,'reset',null); } }
 }
 function cbName(cb){ return {MCCB1:'MCCB1','52R':'受電 VCB 52R','52S':'変電所の遮断器','PAS':'PAS','52G':'自家発の遮断器 52G','52T':'52T'}[cb]||cb; }
 function sReset(keep){ SS=sNew(); for(let i=0;i<40;i++) sStep(DT); SS.log=[]; sLastLog=-1; sHold=0; sFocus=null; if(!keep) sFull=[]; }
@@ -1979,7 +1982,7 @@ const LPATH={ B:[[430,310],[530,310],[530,394]], L:[[330,430],[420,430],[420,540
 const SPRESETS=[
   {l:'① 低圧末端の短絡', p:{loc:'E',kind:'3p'}, k:'ok', t:'MCCB が先に切る', note:'MCCB の瞬時引外しが 0.015 s で動き、0.025 s に開く。受電 OCR と変電所 F51 は検出したものの、事故電流が消えて復帰する。停電はこの低圧回路だけ。'},
   {l:'② 高圧母線の短絡', p:{loc:'B',kind:'3p'}, k:'ok', t:'受電 OCR の瞬時', note:'受電 OCR の瞬時要素（1,200 A 以上）が 0.04 s で動き、受電 VCB が 0.09 s に開く。変電所 F51 は 0.47 s かかるので間に合わず復帰する。PAS の SO は一度ロックするが、無電圧にならないので解除される。'},
-  {l:'③ 受電 OCR の整定ミス', p:{loc:'B',kind:'3p',inst:0,lever:10}, k:'bad', t:'波及事故', note:'瞬時要素を切り、レバーを 10 にしたため、受電 OCR（1.28 s）より変電所 F51（0.47 s）が先に動く。配電線全体が一度停電する（波及事故）。PAS の SO が無電圧の間に開いて事故を切り離すので、再閉路でほかの需要家は復電する。再閉路は実際は約 1 分後で、画面では 2 s に縮めている。'},
+  {l:'③ 受電 OCR の整定ミス', p:{loc:'B',kind:'3p',inst:0,lever:10}, k:'bad', t:'波及事故', note:'瞬時要素を切り、レバーを 10 にしたため、受電 OCR（1.28 s）より変電所 F51（0.47 s）が先に動く。配電線全体が一度停電する（波及事故）。PAS の SO が無電圧の間に開いて事故を切り離すので、約 1 分後の再閉路でほかの需要家は復電する（待つあいだは早送りする）。'},
   {l:'③’ 整定ミス・SO なし', p:{loc:'B',kind:'3p',inst:0,lever:10,so:false}, k:'bad', t:'長時間停電', note:'③ と同じ整定ミスで、PAS に SO 機能がない場合。再閉路しても事故が残っているので変電所 F51 がもう一度動き、ロックアウトする。配電線全体が長時間停電する。'},
   {l:'④ MCCB が遮断できない', p:{loc:'E',kind:'3p',mfail:true}, k:'ok', t:'後備保護', note:'MCCB が故障して開かない。受電 OCR の限時要素が後備保護として 0.555 s で動作し、0.605 s に受電 VCB が開く。工場全体が停電する。'},
   {l:'⑤ PAS〜受電 VCB 間の短絡', p:{loc:'V',kind:'3p'}, k:'ok', t:'SO 動作', note:'受電 OCR は事故点より下流なので事故電流を見ない。PAS は短絡電流を切れないので SO でロックし、変電所の遮断器が開いて無電圧になってから開く。再閉路でほかの需要家は復電する。'},
@@ -2056,8 +2059,8 @@ function backOpens(opens, nm, cbn, sh){ const g={}; opens.forEach(o=>{ const k=o
   return Object.values(g).map(o=>{ const n=nm(o.who), c=o.cbs.join('・'); return [`${n&&n!==c?n+' → ':''}${c} 開`, sh(o.te), 'cb']; }); }
 const SBN={mccb:'MCCB1', rocr:'受電 OCR', socr:'F51', sdg:'F67G', pasSO:'PAS の SO', pasdgr:'PAS の DGR', g64:'OVGR', g27:'UVR'};
 const SCBN={MCCB1:'MCCB1','52R':'52R','52S':'変電所','PAS':'PAS','52G':'52G'};
-/* 工場：再閉路は画面では 2 s に縮めているので、ものさしでは実際の約 1 分の位置に置く */
-function sBackTL(){ const S_=SS, D=S_.dev; if(!S_.ev) return null; const sh=te=>(S_.rc.teRe!=null && te>=S_.rc.teRe-1e-9) ? te+(60-RECLOSE) : te;
+/* 工場：経過（約 1 分の再閉路まで）と、そのあとの復旧の目安 */
+function sBackTL(){ const S_=SS, D=S_.dev; if(!S_.ev) return null; const sh=te=>te;
   const tl=[[SQ.kind==='lg'?'地絡':'短絡',0,'ev'], ...backOpens(S_.opens, id=>SBN[id]||'', cb=>SCBN[cb]||cb, sh)];
   S_.trips.filter(t=>!S_.opens.some(o=>o.who===t.id)).forEach(t=>tl.push([`${SBN[t.id]} 動作${t.id==='mccb'&&SQ.mfail?'（遮断できず）':''}`, sh(t.te), 'relay']));
   if(S_.rc.teRe!=null) tl.push(['再閉路（約 1 分後）', sh(S_.rc.teRe), 'back']);
