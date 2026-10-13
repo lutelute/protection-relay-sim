@@ -362,6 +362,7 @@ footer{font-size:12px;color:var(--muted)}
       <div class="scenewrap"><canvas id="sld" width="880" height="580" aria-label="高圧受電設備の単線結線図。丸をクリックすると、その場所で事故が起きる"></canvas></div>
       <div class="verdict" id="sverdict"></div>
       <div class="exp" id="sexp" aria-live="polite"></div>
+      <div class="exp rback" id="sback"></div>
       <div class="controls">
         <button class="fire" id="sfire">事故を起こす</button>
         <div class="transport"><button class="tbtn" id="splay" title="一時停止／再生（Space）">❚❚</button><button class="ghost" id="sreset" title="復帰（R）">復帰</button></div>
@@ -1882,7 +1883,7 @@ const rowName = rw => rw.id==='pasdgr' && !SQ.dgr ? 'PAS の GR 51G（方向な�
 const RESET_WHY = {pasdgr:'地絡の条件が消えた', sdg:'零相電圧が消えた', g64:'零相電圧が消えた', g27:'電圧が戻った'};
 function sNew(){ const d={}; SROWS.forEach(r=>d[r.id]={prog:0,pick:false,tripped:false,tTrip:null,tOpen:null,el:{},elem:null,I:0,top:null,status:'待機'});
   return {t:0, ev:false, te:0, open:{}, opening:{}, dev:d, so:{locked:false,dead:0,clear:0}, rc:{count:0,tOpen:null,tRe:null,onFault:false,lockout:false,okLog:false}, pasHold:false,
-    log:[], hist:[], r:null, V0:0, I0:0, I0lead:true, firstI:{}, trips:[], ever:new Set()}; }
+    log:[], hist:[], r:null, V0:0, I0:0, I0lead:true, firstI:{}, trips:[], ever:new Set(), opens:[]}; }
 /* 時刻 t は止まらずに進む。te は事故からの時刻（事故前の出来事は t=null で「事故前」と出す） */
 function sLog(s, cls='', at=null){ const e={t:SS.ev?SS.te:null, ta:SS.t, s, cls, at}; SS.log.push(e); const i=SS.log.length-1;
   if(sFull[i] && sFull[i].s!==s) sFull.length=i;   /* 条件を変えて経過が変わったら、先の記録は捨てる */
@@ -1898,10 +1899,10 @@ function sStep(dt){
   /* SO ロック中は、地絡継電器からの PAS 開放を止めて保留にする（短絡電流を切らないため） */
   if(S_.opening.PAS && S_.opening.PAS.who==='pasdgr' && S_.so.locked){ S_.opening.PAS=null; S_.pasHold=true; sLog('SO がロックしたので、地絡継電器による PAS の開放を保留','reset', SPOS.pasdgr); }
   if(S_.pasHold && !S_.so.locked && !S_.open.PAS && !S_.opening.PAS){ S_.pasHold=false; sOpenCb('PAS','pasdgr'); sLog('SO ロックが解けたので、保留していた PAS の開放を実行','pick', SPOS.pasdgr); }
-  Object.entries(S_.opening).forEach(([cb,o])=>{ if(o && S_.t>=o.at){ S_.open[cb]=true; S_.opening[cb]=null; if(o.who && D[o.who]) D[o.who].tOpen=S_.te; sLog(`${cbName(cb)} が開いた`, 'cb', SPOS[cb]);
-    if(cb==='52S'){ S_.rc.tOpen=S_.t; if(S_.rc.count>=1){ S_.rc.lockout=true; sLog('再閉路しても事故が残っていた → 変電所はロックアウト（長時間の停電）','bad', SPOS['52S']); } } } });
+  Object.entries(S_.opening).forEach(([cb,o])=>{ if(o && S_.t>=o.at){ S_.open[cb]=true; S_.opening[cb]=null; if(o.who && D[o.who]) D[o.who].tOpen=S_.te; if(S_.ev) S_.opens.push({cb, who:o.who, te:S_.te}); sLog(`${cbName(cb)} が開いた`, 'cb', SPOS[cb]);
+    if(cb==='52S'){ S_.rc.tOpen=S_.t; if(S_.rc.count>=1){ S_.rc.lockout=true; S_.rc.teLock=S_.te; sLog('再閉路しても事故が残っていた → 変電所はロックアウト（長時間の停電）','bad', SPOS['52S']); } } } });
   /* 再閉路：変電所の遮断器を 1 回だけ入れ直す */
-  if(S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && S_.t-S_.rc.tOpen>=RECLOSE){ S_.open['52S']=false; S_.rc.count=1; S_.rc.tOpen=null; S_.rc.tRe=S_.t;
+  if(S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && S_.t-S_.rc.tOpen>=RECLOSE){ S_.open['52S']=false; S_.rc.count=1; S_.rc.tOpen=null; S_.rc.tRe=S_.t; S_.rc.teRe=S_.te;
     sLog(`変電所の遮断器を再閉路（実際は${RECLOSE_REAL}後。ここでは ${RECLOSE} s に縮めている）`, 'cb', SPOS['52S']);
     ['socr','sdg'].forEach(k=>Object.assign(D[k],{tripped:false,prog:0,el:{},pick:false,status:'待機',tTrip:null,tOpen:null}));
     const isl=sIsland(S_.open,'S');
@@ -1951,7 +1952,7 @@ function sStep(dt){
   const genOn = Q.gen && !S_.open['52G'];
   run('g64', [{k:'',on:genOn && v0at('B')>=10,t:0.5}], ()=>sOpenCb('52G','g64'), v0at('B'));
   const VB = cabs(r.V.B); run('g27', [{k:'',on:genOn && VB<0.8,t:1.0}], ()=>sOpenCb('52G','g27'), VB*100);
-  if(S_.rc.tRe!=null && !S_.rc.okLog && !S_.rc.onFault && !S_.rc.lockout && S_.t-S_.rc.tRe>0.3 && !D.socr.pick && !D.sdg.pick){ S_.rc.okLog=true;
+  if(S_.rc.tRe!=null && !S_.rc.okLog && !S_.rc.onFault && !S_.rc.lockout && S_.t-S_.rc.tRe>0.3 && !D.socr.pick && !D.sdg.pick){ S_.rc.okLog=true; S_.rc.teOk=S_.te;
     sLog(S_.open.PAS ? '再閉路成功。ほかの需要家は復電した。この工場は PAS で切り離したまま' : '再閉路成功。配電線は復電した', 'cb', SPOS['52S']); }
   S_.hist.push({t:S_.t, te:S_.te, I:{rocr:D.rocr.I, socr:D.socr.I, mccb:D.mccb.I}});
   if(S_.hist.length>1200) S_.hist.shift();
@@ -2046,6 +2047,30 @@ function sExpTime(id){ const lg=SQ.kind==='lg';
   const dv=sldDevices(SQ).find(d=>d.id===id); if(!dv) return ''; const r=sldSolve(SQ,{},SFP[SQ.loc].node), Ie=r.I[dv.edge], I=Ie?ampOf(dv.edge,Ie):0;
   return dv.pick(I) ? `${ampStr(I)} → ${secStr(dv.t(I))}` : `${ampStr(I)}：整定に届かず検出しない`; }
 let sExpKey='', sExpCache=null;
+/* ===== 戻るまで（両方の単線結線図で使う）。約 1 分まではシミュレーションの経過、その先は目安 ===== */
+function backHTML(tl){ const h='<div class="eh">戻るまで<small>事故から、遮断・再閉路・復旧までの時間（横軸は対数）</small></div>';
+  if(!tl) return h+'<p class="ewhy">事故を起こすと、遮断器が開くまで・再閉路・復旧までの時間が、ここにものさしで並ぶ。</p>';
+  return h+`<div class="ruler">${xRuler(tl)}</div><p class="rl-legend"><span class="rl-k ev">事故・ロックアウト</span><span class="rl-k relay">継電器が動作</span><span class="rl-k cb">遮断器が開く</span><span class="rl-k back">再閉路・復電</span><span class="rl-k rest">復旧（目安）</span>約 1 分まではシミュレーションの経過、その先は目安（事故の種類・設備・事業者で違う）。</p>`; }
+/* 遮断器の開放を、開けた継電器ごとにまとめてラベルにする */
+function backOpens(opens, nm, cbn, sh){ const g={}; opens.forEach(o=>{ const k=o.who+'@'+o.te.toFixed(3); (g[k]=g[k]||{who:o.who,te:o.te,cbs:[]}).cbs.push(cbn(o.cb)); });
+  return Object.values(g).map(o=>{ const n=nm(o.who), c=o.cbs.join('・'); return [`${n&&n!==c?n+' → ':''}${c} 開`, sh(o.te), 'cb']; }); }
+const SBN={mccb:'MCCB1', rocr:'受電 OCR', socr:'F51', sdg:'F67G', pasSO:'PAS の SO', pasdgr:'PAS の DGR', g64:'OVGR', g27:'UVR'};
+const SCBN={MCCB1:'MCCB1','52R':'52R','52S':'変電所','PAS':'PAS','52G':'52G'};
+/* 工場：再閉路は画面では 2 s に縮めているので、ものさしでは実際の約 1 分の位置に置く */
+function sBackTL(){ const S_=SS, D=S_.dev; if(!S_.ev) return null; const sh=te=>(S_.rc.teRe!=null && te>=S_.rc.teRe-1e-9) ? te+(60-RECLOSE) : te;
+  const tl=[[SQ.kind==='lg'?'地絡':'短絡',0,'ev'], ...backOpens(S_.opens, id=>SBN[id]||'', cb=>SCBN[cb]||cb, sh)];
+  S_.trips.filter(t=>!S_.opens.some(o=>o.who===t.id)).forEach(t=>tl.push([`${SBN[t.id]} 動作${t.id==='mccb'&&SQ.mfail?'（遮断できず）':''}`, sh(t.te), 'relay']));
+  if(S_.rc.teRe!=null) tl.push(['再閉路（約 1 分後）', sh(S_.rc.teRe), 'back']);
+  if(S_.rc.teOk!=null) tl.push([S_.open.PAS?'ほかの需要家は復電':'配電線が復電', sh(S_.rc.teOk), 'back']);
+  if(S_.rc.lockout) tl.push(['ロックアウト', sh(S_.rc.teLock), 'ev']);
+  const last=Math.max(0,...tl.map(x=>x[1])), busy=SROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped)||Object.values(S_.opening).some(Boolean)||S_.so.locked||(S_.rc.tOpen!=null&&S_.rc.count===0&&!S_.rc.lockout);
+  if(busy || sh(S_.te)<last+0.5) return tl;
+  const op=new Set(S_.opens.map(o=>o.cb));
+  if(S_.rc.lockout) tl.push(['修理して配電線に送電 数時間〜',3*3600,'rest']);
+  if(op.has('52R')||op.has('PAS')) tl.push(['構内を点検して復旧 数時間〜',4*3600,'rest']);
+  else if(op.has('MCCB1')) tl.push(['MCCB を入れ直す 数十分〜',1800,'rest']);
+  if(op.has('52G')) tl.push(['自家発を並列し直す 数十分〜',1200,'rest']);
+  return tl; }
 let sRoles={};
 function drawSld(){ const c=sldC, g=G, keep=G.c; sRoles=expRoles(sExpect()); G.c=c; c.clearRect(0,0,880,580); c.fillStyle=C.sunk; c.fillRect(0,0,880,580);
   const r=SS.r, live=sReach(), alive=(a,b)=>live.has(a)&&live.has(b), lg=SQ.kind==='lg';
@@ -2150,6 +2175,7 @@ function sDOM(){ const D=SS.dev, lg=SQ.kind==='lg';
   const k=JSON.stringify(SQ); if(k!==sExpKey){ sExpKey=k; const E=sExpect(), nm=id=>rowName(SROWS.find(x=>x.id===id)), tx={}; ['main','sub','back','no'].forEach(r=>(E[r]||[]).forEach(id=>tx[id]=sExpTime(id))); sExpCache={E,nm,tx}; }
   const {E,nm,tx}=sExpCache, quiet = SS.ev && SS.te>0.3 && faultOn && !SROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped) && !SS.so.locked;
   const eh=expHTML(E, nm, id=>tx[id], SS.ev?expJudge(E, SS.trips, SS.ever, nm, quiet, !faultOn):null), ee=$('sexp'); if(ee._h!==eh){ ee.innerHTML=eh; ee._h=eh; }
+  const btl=sBackTL(), bk=JSON.stringify(btl), be=$('sback'); if(be._h!==bk){ be.innerHTML=backHTML(btl); be._h=bk; }
   const pill = faultOn ? ['var(--amber)','事故中'] : outs.length ? ['var(--fault)','停電'] : ['var(--ok)','給電中'];
   const msg = (faultOn ? '事故電流が流れている。' : '') + (outs.length ? '停電している範囲：'+outs.join('・') : (faultOn?'':'事故は取り除かれ、すべて給電中'));
   $('sverdict').innerHTML = SS.ev ? `<span class="pill" style="background:${pill[0]}">${pill[1]}</span><span>${msg}　（事故から ${SS.te.toFixed(3)} s）</span>` : '<span class="pill">平常</span><span>事故の場所を図の丸か「シナリオ」で選ぶ</span>';
@@ -3419,6 +3445,7 @@ paintExplain();
       <div class="scenewrap"><canvas id="wsld" width="880" height="600" aria-label="送電線と配電用変電所の単線結線図。丸をクリックすると、その場所で事故が起きる"></canvas></div>
       <div class="verdict" id="wverdict"></div>
       <div class="exp" id="wexp" aria-live="polite"></div>
+      <div class="exp rback" id="wback"></div>
       <div class="controls">
         <button class="fire" id="wfire">事故を起こす</button>
         <div class="transport"><button class="tbtn" id="wplay" title="一時停止／再生（Space）">❚❚</button><button class="ghost" id="wreset" title="復帰（R）">復帰</button></div>
@@ -3614,32 +3641,32 @@ const WHZR={isl:1, ldc:2, ns:3}, WHZT={isl:'単独運転を誰も検出できず
   ns:'同期を確かめないまま、INV が充電している線路に再閉路した（非同期投入のおそれ）。位相差によっては大きな電流が流れ、機器を傷める。'};
 function wHz(k){ if(!WS.hz || WHZR[k]>WHZR[WS.hz]) WS.hz=k; }
 function wNew(){ const d={}; WROWS.forEach(r=>d[r.id]={prog:0,pick:false,tripped:false,tTrip:null,tOpen:null,el:{},elem:null,top:null,v:'',status:'待機'});
-  return {t:0, ev:false, te:0, on:false, open:{}, opening:{}, by:{}, dev:d, rc:{}, log:[], trips:[], ever:new Set(), r:null, X:{}, M:null, invRun:false, isl:null, hz:null, vinv:null, gb:false}; }
+  return {t:0, ev:false, te:0, on:false, open:{}, opening:{}, by:{}, dev:d, rc:{}, log:[], trips:[], ever:new Set(), r:null, X:{}, M:null, invRun:false, isl:null, hz:null, vinv:null, gb:false, opens:[]}; }
 function wLog(s, cls='', at=null){ const e={t:WS.ev?WS.te:null, ta:WS.t, s, cls, at}; WS.log.push(e); const i=WS.log.length-1; if(wFull[i] && wFull[i].s!==s) wFull.length=i; wFull[i]=e; }
 function wOpen(cb, who){ if(WS.open[cb]||WS.opening[cb]) return;
   if(cb==='52F1' && WQ.fail==='cbf1'){ if(!WS.cbFail){ WS.cbFail=true; wLog('52F1 が開かない（遮断器の故障）。事故電流が流れ続ける','bad',WPOS['52F1']); } return; }
   WS.opening[cb]={at:WS.t+WCB[cb].brk, who}; }
 function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.ppv/10:0; S_.t+=dt; if(S_.ev) S_.te+=dt;
   /* 遮断器の開極。送電線・配電線の継電器が開けたら、再閉路の準備（2 回目はロックアウト） */
-  Object.entries(S_.opening).forEach(([cb,o])=>{ if(!o || S_.t<o.at) return; S_.open[cb]=true; S_.opening[cb]=null; S_.by[cb]=o.who; if(D[o.who] && D[o.who].tOpen==null) D[o.who].tOpen=S_.te; if(cb==='52P') S_.invRun=false;
+  Object.entries(S_.opening).forEach(([cb,o])=>{ if(!o || S_.t<o.at) return; S_.open[cb]=true; S_.opening[cb]=null; S_.by[cb]=o.who; if(D[o.who] && D[o.who].tOpen==null) D[o.who].tOpen=S_.te; if(cb==='52P') S_.invRun=false; if(S_.ev) S_.opens.push({cb, who:o.who, te:S_.te});
     wLog(`${WCB[cb].nm} が開いた`,'cb',WPOS[cb]);
     Object.values(WRC).forEach(rc=>{ if(rc.cbs[0]!==cb || !rc.rel.includes(o.who)) return; const st=S_.rc[rc.nm]=S_.rc[rc.nm]||{n:0};
-      if(st.n>=1){ st.lock=true; wLog(`${rc.nm}は再閉路しても事故が残っていた → ロックアウト（長時間の停電）`,'bad',WPOS[cb]); } else st.t=S_.t; }); });
+      if(st.n>=1){ st.lock=true; st.teLock=S_.te; wLog(`${rc.nm}は再閉路しても事故が残っていた → ロックアウト（長時間の停電）`,'bad',WPOS[cb]); } else st.t=S_.t; }); });
   /* 再閉路（1 回だけ、約 1 分後）。配電線 F1 は線路無電圧確認装置があれば、線路の無電圧を確かめてから入れる */
   Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(!st || st.t==null || st.n>0 || S_.t-st.t<WREC) return;
     const chk = Q.ldc && rc.nm==='配電線 F1';
     if(chk && S_.t-(S_.f1Live??-1e9) < WLDC.conf){
-      if(st.w==null){ st.w=S_.t; wLog('線路無電圧確認装置：配電線 F1 に電圧がある（INV の単独運転）ので、投入の条件が成り立たない。無電圧になるのを待つ','reset',WPOS['52F1']); }
-      if(S_.t-st.w>=WLDC.wait){ st.t=null; st.lock=true; wHz('ldc'); wLog(`線路無電圧確認装置：${WLDC.wait} s 待っても電圧が消えない → 再閉路をやめてロックアウト。F1 の停電が長引く`,'bad',WPOS['52F1']); }
+      if(st.w==null){ st.w=S_.t; st.teW=S_.te; wLog('線路無電圧確認装置：配電線 F1 に電圧がある（INV の単独運転）ので、投入の条件が成り立たない。無電圧になるのを待つ','reset',WPOS['52F1']); }
+      if(S_.t-st.w>=WLDC.wait){ st.t=null; st.lock=true; st.teLock=S_.te; wHz('ldc'); wLog(`線路無電圧確認装置：${WLDC.wait} s 待っても電圧が消えない → 再閉路をやめてロックアウト。F1 の停電が長引く`,'bad',WPOS['52F1']); }
       return; }
     const cbs=rc.cbs.filter(cb=>S_.open[cb] && rc.rel.includes(S_.by[cb])), ivLive=!!S_.isl && !S_.gb && S_.invRun && !S_.open['52P'], ivn=ivLive?wIsland(S_.open,f.pos,'E1'):null;
     const hit = ivLive && cbs.some(cb=>{ const e=wEdges(f.pos).find(x=>x.cb===cb); return ivn.has(e.a)||ivn.has(e.b); });
-    cbs.forEach(cb=>{ S_.open[cb]=false; }); st.n=1; st.t=null; st.tRe=S_.t;
+    cbs.forEach(cb=>{ S_.open[cb]=false; }); st.n=1; st.t=null; st.tRe=S_.t; st.teRe=S_.te;
     wLog(`${rc.nm}を再閉路${chk&&Q.inv==='on'?'（線路の無電圧を確かめてから）':''}（約 1 分後）`,'cb',WPOS[rc.cbs[0]]);
     if(hit){ wHz('ns'); wLog('同期を確かめないまま、INV が充電している線路に投入した（非同期投入のおそれ。位相差によっては大きな電流が流れ、機器を傷める。この過渡はここでは計算しない）','bad',WPOS.inv); }
     rc.rel.forEach(id=>Object.assign(D[id],{tripped:false,prog:0,el:{},pick:false,status:'待機',tTrip:null,tOpen:null})); });
   /* 励磁突入のシナリオ：突入電流が収まったら二次側を入れる */
-  if(S_.ev && Q.kind==='inrush' && !S_.closed2 && S_.te>=WINR.close2){ S_.closed2=true; if(!S_.open['52T1']){ S_.open['52T2']=false; wLog('突入電流が収まったので 52T2 を入れて送電を始めた','cb',WPOS['52T2']); } }
+  if(S_.ev && Q.kind==='inrush' && !S_.closed2 && S_.te>=WINR.close2){ S_.closed2=true; if(!S_.open['52T1']){ S_.open['52T2']=false; S_.teClose2=S_.te; wLog('突入電流が収まったので 52T2 を入れて送電を始めた','cb',WPOS['52T2']); } }
   /* 潮流と事故電流（INV があれば E1 に電流を注入する） */
   const run=S_.invRun && !S_.open['52P'], r=wSolveP(S_.open, S_.on && Q.kind==='3p' ? f.node : null, f.pos, P, run, S_.vinv, S_.gb);
   if(S_.ev && run && !!r.gb!==S_.gb) wLog(r.gb?'INV：端子電圧が 20 % 未満になったので電流を止めた（ゲートブロック）。無電圧から自立して起動はしない':'INV：系統の電圧が戻ったので電流を再開した','reset',WPOS.inv);
@@ -3652,7 +3679,7 @@ function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.
   /* INV の単独運転：系統から切り離されても運転を続けている。位相の跳躍は負荷の力率角（INV は力率 1） */
   const isl = run && !ener.g.has('E1');
   if(isl && !S_.isl){ const nd=wIsland(S_.open,f.pos,'E1'), Pl=(nd.has('E1')?0.4:0)+(nd.has('E2')?0.3:0), pf=Math.min(1,+Q.qpf||1), th=Math.acos(pf)*180/Math.PI;
-    S_.isl={t0:S_.te, r:Pl>0?P/Pl:9, th, Pl};
+    S_.isl={t0:S_.te, r:Pl>0?P/Pl:9, th, Pl}; if(S_.ev && !r.gb && S_.islFirst==null) S_.islFirst=S_.te;
     if(S_.ev && !r.gb) wLog(`系統から切り離されたが、INV が運転を続けて${nd.has('E2')?'6.6 kV 母線と配電線 F1・F2':'配電線 F1'}を充電している（単独運転。停電したはずの線路に電気が来ていて危険）。出力 ${Q.ppv} MW ／ 負荷 ${(Pl*10).toFixed(0)} MW、負荷の力率 ${pf.toFixed(2)} → 位相の跳躍 ${th.toFixed(0)}°`,'bad',WPOS.inv); }
   if(!isl) S_.isl=null;
   const df = isl && !r.gb && Q.ipro==='full' ? 1.5*(S_.te-S_.isl.t0) : 0;
@@ -3670,7 +3697,7 @@ function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.
   const busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped);
   /* 単独運転を誰も検出していない（能動的方式の時間も過ぎた） */
   if(S_.ev && isl && !r.gb && !S_.hzIsl && !busy && !Object.values(S_.opening).some(Boolean) && S_.te-S_.isl.t0>1.0){ S_.hzIsl=true; wHz('isl'); wLog('単独運転を誰も検出していない（不感帯）。停電したはずの配電線が充電されたまま','bad',WPOS.inv); }
-  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.tRe!=null && !st.ok && !st.lock && S_.t-st.tRe>0.4 && !rc.rel.some(id=>D[id].pick)){ st.ok=true; wLog(`${rc.nm}の再閉路に成功して復電した`,'cb',WPOS[rc.cbs[0]]); } });
+  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.tRe!=null && !st.ok && !st.lock && S_.t-st.tRe>0.4 && !rc.rel.some(id=>D[id].pick)){ st.ok=true; st.teOk=S_.te; wLog(`${rc.nm}の再閉路に成功して復電した`,'cb',WPOS[rc.cbs[0]]); } });
   /* 再閉路を待つあいだ、何も変わらなければ早送りする（待ち時間は実時間のまま） */
   if(S_.ev){ const nx=[]; Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.t!=null && st.n===0) nx.push(st.w!=null ? st.w+WLDC.wait : st.t+WREC); });
     const calm = !busy && !Object.values(S_.opening).some(Boolean) && !(isl && !r.gb && !S_.hzIsl) && !(Q.kind==='inrush' && !S_.closed2);
@@ -3739,6 +3766,27 @@ function wInvSim(){ const keep={WS,wFull,wFocus,wHold}, res={minV:9};
   return res; }
 const WINVN={i27:'UVR（電圧低下）', i59:'OVR（電圧上昇）', i95:'OFR・UFR（周波数）', i64:'OVGR（V0）', ipas:'受動的方式（位相の跳躍）', iact:'能動的方式（周波数を揺さぶる）', itt:'転送遮断（通信）'};
 let wExpKey='', wExpCache=null;
+const WBN={l87:'87L', z44:'44S', g67:'67G', t87:'T87', b96:'96', tp51:'TP51', ts51:'TS51', b64:'64B', f1oc:'F51', f1dg:'F67G', f2oc:'F51（F2）', f2dg:'F67G（F2）', i27:'INV の UVR', i59:'INV の OVR', i95:'INV の OFR・UFR', i64:'INV の OVGR', ipas:'受動的方式', iact:'能動的方式', itt:'転送遮断', manual:'作業'};
+/* 系統：シミュレーションの経過（約 1 分の再閉路まで）と、そのあとの復旧の目安 */
+function wBackTL(){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc]; if(!S_.ev) return null; const id0=x=>x;
+  const tl=[[{open:'52F1 を開く',inrush:'52T1 を入れる'}[Q.kind]||{lg:'地絡',turn:'層間短絡'}[Q.kind]||'短絡',0,'ev'], ...backOpens(S_.opens, id=>WBN[id]||'', cb=>cb, id0)];
+  S_.trips.filter(t=>t.id!=='inv' && !S_.opens.some(o=>o.who===t.id)).forEach(t=>tl.push([`${WBN[t.id]} 動作${t.id==='f1oc'&&Q.fail==='cbf1'?'（遮断できず）':''}`, t.te, 'relay']));
+  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(!st) return; if(st.teW!=null) tl.push(['投入を待つ（線路に電圧）',st.teW,'relay']); if(st.teRe!=null) tl.push([`${rc.nm}を再閉路`,st.teRe,'back']); if(st.teOk!=null) tl.push([`${rc.nm}が復電`,st.teOk,'back']); if(st.teLock!=null) tl.push([`${rc.nm}をロックアウト`,st.teLock,'ev']); });
+  if(S_.islFirst!=null) tl.push(['単独運転（危険）',Math.max(0.001,S_.islFirst),'ev']); if(S_.teClose2!=null) tl.push(['52T2 を入れて送電',S_.teClose2,'back']);
+  const ivRun=Q.inv==='on' && S_.invRun && !S_.open['52P'], ener=wEnergized(S_.open,f.pos,ivRun && !S_.gb), X=S_.X||{}, lg=Q.kind==='lg';
+  const faultOn=(Q.kind==='3p' && S_.on && ener.all.has(f.node)) || (lg && (X.V0>0||X.lg66||X.V0i>0)) || (Q.kind==='turn' && X.turn);
+  const last=Math.max(0,...tl.map(x=>x[1])), busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped)||Object.values(S_.opening).some(Boolean)||Object.values(S_.rc).some(st=>st.t!=null&&st.n===0)||(Q.kind==='inrush'&&!S_.closed2);
+  if(busy || S_.te<last+0.5) return tl;
+  const by=ids=>S_.opens.some(o=>ids.includes(o.who)), lock=Object.values(S_.rc).some(st=>st.lock);
+  if(lock) tl.push(['修理して送電 数時間〜',3*3600,'rest']);
+  if(by(['t87','b96','tp51']) && Q.kind!=='inrush'){ tl.push(['ほかの変圧器で送電 数時間〜',4*3600,'rest']); tl.push(['変圧器の修理 数週間〜',1.5e6,'rest']); }
+  if(by(['t87','b96','tp51']) && Q.kind==='inrush') tl.push(['原因を確かめて入れ直す 数十分〜',1800,'rest']);
+  if(by(['ts51','b64'])) tl.push(['母線を点検して送電 数時間〜',3*3600,'rest']);
+  if(Q.kind==='open' && !ener.inv) tl.push(['作業後に 52F1 を入れる 数時間',3*3600,'rest']);
+  if(faultOn) tl.push(['検出されないまま（巡視で見つけるまで）',3600,'ev']);
+  if(ener.inv) tl.push(['単独運転が続く（止めるまで危険）',600,'ev']);
+  if(S_.opens.some(o=>o.cb==='52P') && ener.g.has('E1')) tl.push(['INV の再並列 数分後',300+(((S_.rc['配電線 F1']||{}).teOk)||0),'back']);
+  return tl; }
 
 /* ===== 描画 ===== */
 const wC=setup($('wsld'),880,600), wChC=setup($('wchart'),480,400);
@@ -4020,6 +4068,7 @@ function wDOM(){ const D=WS.dev, Q=WQ, f=WFP[Q.loc], lg=Q.kind==='lg', X=WS.X||{
   if(res && res[0]==='ok' && Q.kind==='open' && E.main.includes('inv')) res=['ok','太陽光（INV）の連系保護が単独運転を見つけて INV を止めた。配電線 F1 は停電した（作業できる状態）。'];
   if(res && res[0]==='ok' && E.no.includes('inv') && !WS.trips.some(t=>t.id==='inv')) res=['ok',res[1]+' 太陽光（INV）は解列せずに運転を続けた（FRT）。'];
   const eh=expHTML(E, wNm, id=>tx[id], res), ee=$('wexp'); if(ee._h!==eh){ ee.innerHTML=eh; ee._h=eh; }
+  const btl=wBackTL(), bk=JSON.stringify(btl), be=$('wback'); if(be._h!==bk){ be.innerHTML=backHTML(btl); be._h=bk; }
   $('wplay').textContent=(wPaused||wHold>0)?'▶':'❚❚'; }
 if(h0==='grid') setView('grid');
 </script>
