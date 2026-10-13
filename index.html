@@ -180,6 +180,36 @@ button.fire:disabled{opacity:.45;cursor:default}
 #chart{aspect-ratio:6/5}
 #trend{aspect-ratio:2/1}
 .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.presets.hidek .k{visibility:hidden}
+/* 解説：目的・物理・判定・戻るまで */
+.exgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.exgrid:empty{display:none}
+.exgrid .wide{grid-column:1/-1}
+@media (max-width:980px){.exgrid{grid-template-columns:minmax(0,1fr)}}
+.exc h3{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:15px}
+.exc .chip{font-size:11px;font-weight:700;color:#fff;border-radius:3px;padding:2px 7px;letter-spacing:.06em;flex:none}
+.exc.aim .chip{background:var(--ok)}.exc.phys .chip{background:var(--amber)}.exc.judge .chip{background:var(--target)}.exc.after .chip{background:var(--s1)}
+.exc p{margin:0 0 6px;font-size:14px;line-height:1.75}.exc ul{margin:0;padding-left:1.2em;font-size:14px;line-height:1.75}
+.eq{font-family:'STIX Two Text','Times New Roman',serif;font-size:15px;background:var(--sunk);border-radius:3px;padding:6px 10px;margin:6px 0;overflow-x:auto;line-height:1.6}
+.eq i{font-style:italic}
+.ruler{overflow-x:auto;margin:6px 0}.ruler svg{display:block;width:100%;min-width:640px;height:auto}
+.rl-axis{stroke:var(--ink);stroke-width:1.5}.rl-tick{stroke:var(--muted)}.rl-tl{fill:var(--muted);font:500 11px var(--f-mono)}.rl-lab{font:600 12px var(--f-display)}
+.rl-lead{stroke-width:1;stroke:var(--rule)}circle.rl-ev,.rl-tev{fill:var(--fault)}circle.rl-relay,.rl-trelay{fill:var(--target)}circle.rl-cb,.rl-tcb{fill:var(--ink)}circle.rl-back,.rl-tback{fill:var(--ok)}circle.rl-rest,.rl-trest{fill:var(--s1)}
+.rl-legend{font-size:12px;color:var(--muted)}.rl-k{display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-weight:700}.rl-k::before{content:'';width:9px;height:9px;border-radius:50%;background:currentColor}
+.rl-k.ev{color:var(--fault)}.rl-k.relay{color:var(--target)}.rl-k.cb{color:var(--ink)}.rl-k.back{color:var(--ok)}.rl-k.rest{color:var(--s1)}
+/* 12 種を見比べる */
+.alllead{margin:0 0 14px;max-width:72ch;color:var(--muted)}.allgroups{display:grid;gap:18px}
+.xg{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:14px 16px}
+.xgh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}.xg h2{margin:0;font-size:18px}.xeq{margin:0;display:inline-block}
+.xs{margin:6px 0 12px;color:var(--muted);font-size:13px;max-width:80ch}
+.xcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.xcard{display:flex;flex-direction:column;gap:6px;border:1.5px solid var(--rule);border-radius:4px;padding:8px;background:var(--bg);cursor:pointer;text-align:left;font:inherit;color:inherit}
+.xcard:hover,.xcard:focus-visible{border-color:var(--target)}
+.xcard canvas{width:100%;height:auto;aspect-ratio:2/1;display:block;border-radius:2px;background:var(--sunk)}
+.xcard .xn{font-weight:700;font-family:var(--f-display);font-size:14px}
+.xdl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;line-height:1.55}.xdl span:nth-child(odd){color:var(--muted);white-space:nowrap}
+.readout.frozen::before{content:'動作したときの値';grid-column:1/-1;font-size:11px;font-weight:700;color:var(--target);letter-spacing:.04em}
+[hidden]{display:none!important}
 .ro{background:var(--sunk);border-radius:2px;padding:6px 8px;min-width:0}
 .ro span{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em}
 .ro b{font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
@@ -227,6 +257,7 @@ footer{font-size:12px;color:var(--muted)}
 
 <nav class="tabs" role="tablist" aria-label="表示の切り替え">
   <button class="tab" role="tab" id="tabRelay" aria-selected="true">継電器ごとの動作</button>
+  <button class="tab" role="tab" id="tabAll" aria-selected="false">12 種を見比べる</button>
   <button class="tab" role="tab" id="tabSld" aria-selected="false">単線結線図で見る（工場の高圧受電設備）</button>
 </nav>
 <div id="viewRelay" class="view">
@@ -275,12 +306,18 @@ footer{font-size:12px;color:var(--muted)}
   </aside>
 </div>
 
+<section class="exgrid" id="exgrid" aria-label="目的・物理・判定・戻るまで"></section>
 <section class="explain">
   <div class="card"><h3 id="ename"></h3><div id="edesc"></div></div>
   <div class="card"><h3>器具番号と整定の例</h3><dl class="dl" id="emeta"></dl></div>
 </section>
 
 </div>
+
+<section id="viewAll" class="view" hidden>
+  <p class="alllead">12 種の継電器を、何を見て判定するかでグループに分けた。図は事故が起きてタイマが進んでいるところ。カードを押すと、その継電器の動きを再生する。</p>
+  <div class="allgroups" id="allgroups"></div>
+</section>
 
 <section id="viewSld" class="view" hidden>
   <div class="bench">
@@ -512,7 +549,8 @@ function drawTrend(c, S, cfg){
 /* ===== 継電器の定義 ===== */
 const RELAYS = [];
 /* 一次遅れで目標値へ寄せる（電流・電圧がすっと変わる見え方にする） */
-function sm(S, k, target, tau=0.04){ const v = S.x[k]; if (v==null || !Number.isFinite(v)) { S.x[k]=target; return target; } let nv = v + (target-v)*(1-Math.exp(-S.dt/tau)); if(Math.abs(target-nv)<=1e-4*Math.max(1,Math.abs(target))) nv=target; S.x[k]=nv; return nv; }
+/* tau=0 は「そのままの値」。事故電流・V0 のように一瞬で変わる量は、判定にも表示にも同じ生の値を使う */
+function sm(S, k, target, tau=0.04){ if(tau<=0){ S.x[k]=target; return target; } const v = S.x[k]; if (v==null || !Number.isFinite(v)) { S.x[k]=target; return target; } let nv = v + (target-v)*(1-Math.exp(-S.dt/tau)); if(Math.abs(target-nv)<=1e-4*Math.max(1,Math.abs(target))) nv=target; S.x[k]=nv; return nv; }
 function histAt(S, t, i=0){ const h=S.hist; if(!h.length) return null; if(t<=h[0].t) return h[0].v[i]; let lo=0, hi=h.length-1; while(hi-lo>1){ const m=(lo+hi)>>1; if(h[m].t<t) lo=m; else hi=m; } return h[hi].v[i]; }
 /* JIS C 4602 の反限時特性（IEC 60255 と同じ式）。レバー 10 で 300 % 入力なら NI 6.3 s・VI 6.75 s・EI 10 s */
 const CURVE = {NI:M=>0.14/(Math.pow(M,0.02)-1), VI:M=>13.5/(M-1), EI:M=>80/(M*M-1)};
@@ -535,7 +573,7 @@ RELAYS.push({
   trend:P=>({min:0, max:Math.max(2, P.mult*1.2), unit:'倍', th:[{v:1,label:'整定値（限時要素）'}, ...(P.inst<P.mult*1.2?[{v:P.inst,label:'瞬時要素',col:C.fault}]:[])], series:[{label:'I/整定',col:'s1'}], wave:true}),
   measure(S,P){
     /* 判定は事故電流そのもの（Ir）で行い、表示だけ滑らかにする */
-    const Ir = S.open?0 : S.ev? P.mult : 0.6, I = sm(S,'I', Ir, 0.03);
+    const Ir = S.open?0 : S.ev? P.mult : 0.6, I = Ir;
     const inst = Ir>=P.inst, lim = Ir>1.0005, tl = SI(Ir,P.lever,P.curve), pick = lim||inst, delay = inst?0.04:tl;
     return {v:[I], pick, delay, elems:[{pick:lim,delay:tl},{pick:inst,delay:0.04}], I, inst,
       detect: pick ? `I = ${I.toFixed(1)} 倍 ≥ 1` : `I = ${I.toFixed(2)} 倍`,
@@ -589,7 +627,7 @@ RELAYS.push({
   trend:P=>{ const mx = P.scen==='in' ? 5 : Math.max(0.6, P.set*2.5, 1.3*P.len*1.2); return {min:0,max:mx,unit:'A',th:[{v:P.set,label:'整定値'}],series:[{label:'I0',col:'s1'}],tf:v=>v.toFixed(1),wave:true}; },
   measure(S,P){
     const chg = 1.3*P.len, tgt = (!S.ev||S.open) ? 0.004 : (P.scen==='in' ? 4.0 : chg);
-    const I0 = sm(S,'I0',tgt,0.03), pick = I0>=P.set;
+    const I0 = sm(S,'I0',tgt,0), pick = I0>=P.set;
     return {v:[I0], pick, delay:0.2, should:P.scen==='in', I0, chg,
       detect: pick?`I0 = ${I0.toFixed(2)} A ≥ ${P.set} A`:`I0 = ${I0.toFixed(3)} A`,
       readout:[['ZCT の検出値（3I0）',I0.toFixed(3)+' A'],['構内ケーブルの充電電流',chg.toFixed(2)+' A'],['整定値',P.set.toFixed(2)+' A']],
@@ -686,8 +724,8 @@ RELAYS.push({
   chartTitle:'電圧三角形と中性点の移動', chartSub:'大地 E が動いた分が V0',
   tripPill:'動作（選択性なし）',
   trend:P=>({min:0,max:110,unit:'%',th:[{v:P.set,label:'整定値'}],series:[{label:'V0',col:'s1'}],ticks:[0,25,50,75,100],tf:v=>v+'%'}),
-  measure(S,P){ const tgt=(S.ev&&!S.open)?100/Math.sqrt(1+Math.pow(P.rf/3,2)):0.4; const V0=sm(S,'V0',tgt,0.03), pick=V0>=P.set;
-    return {v:[V0], pick, delay:0.5, should:tgt>=P.set||!S.ev?true:false, V0, detect: pick?`V0 = ${V0.toFixed(0)}% ≥ ${P.set}%`:`V0 = ${V0.toFixed(1)}%`,
+  measure(S,P){ const tgt=(S.ev&&!S.open)?100/Math.sqrt(1+Math.pow(P.rf/3,2)):0.4; const V0=sm(S,'V0',tgt,0), pick=V0>=P.set, ang=(S.ev&&!S.open)?Math.atan(P.rf/3):0;
+    return {ang, v:[V0], pick, delay:0.5, should:tgt>=P.set||!S.ev?true:false, V0, detect: pick?`V0 = ${V0.toFixed(0)}% ≥ ${P.set}%`:`V0 = ${V0.toFixed(1)}%`,
       readout:[['零相電圧 V0',V0.toFixed(1)+' %'],['地絡したフィーダ','F'+(+P.fdr+1)],['遮断の範囲', S.open?'全フィーダ':'—']], holdText:'地絡抵抗が大きく V0 が整定値に届かない'}; },
   tripText:(S,m,P)=>`V0 で地絡は分かったが場所は分からない。受電遮断器を開き、健全なフィーダまで全部停電した（F${+P.fdr+1} 以外も）`,
   scene(S,P){ const m=S.m, on=S.ev&&!S.open, fx=[360,470,580];
@@ -702,7 +740,7 @@ RELAYS.push({
   },
   chart(c,S,P){ const m=S.m, cx=240, cy=210, r=118, th=G.t*0.9+Math.PI/2; const k=clamp(m.V0/100,0,1);
     const vx=[0,1,2].map(i=>[cx+r*Math.cos(th-i*TAU/3), cy-r*Math.sin(th-i*TAU/3)]);
-    const f=+P.fdr; const ex=lerp(cx,vx[0][0],k), ey=lerp(cy,vx[0][1],k);   /* 地絡相は a 相として描く */
+    const f=+P.fdr, ang=m.ang||0; const ex=cx+r*k*Math.cos(th-ang), ey=cy-r*k*Math.sin(th-ang);   /* 地絡相は a 相。大地の点 E = Ea / (1 + j·Rf/3 kΩ)：大きさだけでなく位相も回る */
     c.save(); c.strokeStyle=C.rule; c.lineWidth=1.5; c.beginPath(); vx.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])); c.closePath(); c.stroke();
     c.strokeStyle=rgba(C.target,0.7); c.setLineDash([4,4]); c.beginPath(); c.arc(cx,cy,r*P.set/100,0,TAU); c.stroke(); c.restore();
     const cols=[C.s1,C.s2,C.s3], lab=['Va','Vb','Vc'];
@@ -735,7 +773,7 @@ RELAYS.push({
   trend:P=>({min:0,max:120,unit:'%',th:[{v:P.set,label:'整定値'}],series:[{label:'V',col:'s1'}],ticks:[0,40,80,120],tf:v=>v+'%'}),
   measure(S,P){ let tgt=100; const eg = S.tripped ? S.te-S.tTrip : -1;
     if(S.tripped) tgt = eg>1.4 ? 100 : 0; else if(S.ev && S.te<P.dur) tgt=P.low;
-    const V=sm(S,'V',tgt,0.05), pick=V<P.set;
+    const V=sm(S,'V',tgt,0), pick=V<P.set;
     return {v:[V], pick, delay:1.0, should:P.low<P.set && P.dur>1.0, V, eg,
       detect: pick?`V = ${V.toFixed(0)}% < ${P.set}%`:`V = ${V.toFixed(0)}%`,
       readout:[['母線電圧',V.toFixed(1)+' %'],['非常用発電機', eg<0?'待機': eg<1.4?'起動中':'給電中'],['動作時間','1.0 s']],
@@ -782,8 +820,8 @@ RELAYS.push({
     /* 相手端の 52B は前方事故を 0.30 s で、背後の線路の 52X は後方事故を 0.35 s で切る（どちらも別の継電器の動作として扱う） */
     const rOpen = ev && fw && S.te>=0.30, xOpen = ev && !fw && S.te>=0.35;
     const fault = ev && (fw ? !(S.open && rOpen) : !xOpen), hit = fault && !S.open;
-    const I=sm(S,'I', S.open?0 : hit?P.mult:0.6, 0.03);
-    const phi=sm(S,'phi', hit ? (fw?-70:110)*Math.PI/180 : -20*Math.PI/180, 0.05);
+    const I=sm(S,'I', S.open?0 : hit?P.mult:0.6, 0);
+    const phi=sm(S,'phi', hit ? (fw?-70:110)*Math.PI/180 : -20*Math.PI/180, 0);
     const cs=Math.cos(phi-DSR_PHI_M), T=I*cs, pick=I>=1 && cs>0;
     return {v:[T], pick, delay:0.2, I, phi, T, rOpen, xOpen, fault,
       detect: pick?'前方・整定値以上': (I>=1?'電流は大きいが後方':`I = ${I.toFixed(2)} 倍`),
@@ -843,8 +881,8 @@ RELAYS.push({
   meta:[['器具番号','67G <small>地絡方向継電器</small>'],['入力','ZCT（I0）＋GPT（V0）'],['整定の例','I0 0.2 A・V0 5 %・最大感度角 45° 進み・0.2 s'],['組み合わせ','64（OVGR）の V0 を共用']],
   chartTitle:'V0 と各フィーダの I0', chartSub:'網かけ側に入ったフィーダだけが動作',
   trend:P=>{ const d=dgrCalc(P,true), mx=Math.max(1,...d.map(x=>x.I0))*1.1; return {min:-mx,max:mx,th:[{v:0.2,label:'整定値 0.2 A'},{v:0,label:'方向の境目',col:C.muted}],series:[{label:'F1',col:'s1'},{label:'F2',col:'s2'},{label:'F3',col:'s3'}],tf:v=>v.toFixed(1)}; },
-  measure(S,P){ const on=S.ev&&!S.open; const d=dgrCalc(P,on); const V0=sm(S,'V0',on?100:0.4,0.03);
-    const fd=d.map((x,i)=>{ const I0=sm(S,'i'+i,x.I0,0.03); const op=I0*Math.cos(x.ang-DGR_M); return {I0,ang:x.ang,op,ch:x.ch,pick:V0>=5 && I0>=0.2 && op>0}; });
+  measure(S,P){ const on=S.ev&&!S.open; const d=dgrCalc(P,on); const V0=sm(S,'V0',on?100:0.4,0);
+    const fd=d.map((x,i)=>{ const I0=sm(S,'i'+i,x.I0,0); const op=I0*Math.cos(x.ang-DGR_M); return {I0,ang:x.ang,op,ch:x.ch,pick:V0>=5 && I0>=0.2 && op>0}; });
     const f=+P.fdr, pick=fd[f].pick;
     const ocgr = fd.filter((x,i)=>i!==f && x.ch>=0.2).map((x,i)=>'F'+(fd.indexOf(x)+1));
     return {v:fd.map(x=>x.op), pick, delay:0.2, should:true, fd, V0,
@@ -903,7 +941,7 @@ function diffScene(S,P,ratio){ const m=S.m, on=S.ev&&!S.open, inF=P.loc==='in';
 }
 function diffCurrents(S,P,mult){ const on=S.ev&&!S.open; let a=1, b=0.995;
   if(S.open){a=0;b=0;} else if(on){ if(P.loc==='in'){ a=mult; b=0.15; } else { a=mult; b=mult*(1-P.cterr/100); } }
-  const I1=sm(S,'I1',a,0.03), I2=sm(S,'I2',b,0.03); return {I1,I2,Id:Math.abs(I1-I2),Ir:(I1+I2)/2}; }
+  const I1=sm(S,'I1',a,0), I2=sm(S,'I2',b,0); return {I1,I2,Id:Math.abs(I1-I2),Ir:(I1+I2)/2}; }
 RELAYS.push({
   id:'dfr', no:'87', ab:'DFR', name:'差動継電器', en:'Differential Relay', group:'流入と流出の差', fireLabel:'事故を起こす',
   params:[
@@ -943,7 +981,7 @@ RELAYS.push({
     {id:'slope', label:'比率（抑制の傾き）', min:20, max:60, step:5, value:40, fmt:v=>v+' %'},
     {id:'mult', label:'事故電流（定格の何倍か）', min:2, max:20, step:0.5, value:8, fmt:v=>v.toFixed(1)+' 倍'},
   ],
-  desc:`<p>差電流の、通過電流に対する比率が設定値以上になると動作する差動継電器。外部事故で通過電流が大きくなると、変流器の特性差や飽和で差電流が出て、ふつうの差動継電器は誤動作しやすい。比率差動では通過電流が大きいほど動作に必要な差電流も大きくするので、この誤動作を防ぎやすい。ただし CT の誤差が比率を超えるほど大きいと防げない。変圧器の励磁突入電流には第 2 調波抑制を併用する。</p>
+  desc:`<p>差電流の、通過電流に対する比率が設定値以上になると動作する差動継電器。外部事故で通過電流が大きくなると、変流器の特性差や飽和で差電流が出て、ふつうの差動継電器は誤動作しやすい。比率差動では通過電流が大きいほど動作に必要な差電流も大きくするので、この誤動作を防ぎやすい。ただし CT の誤差が大きく、差電流と通過電流の比（Id / Ir）が設定比率を超えると防げない（比率 40 % なら CT 誤差およそ 33 % が境目。CT 誤差の値と比率の値は同じではない）。変圧器の励磁突入電流には第 2 調波抑制を併用する。</p>
         <p class="key">はじめは「外部事故・CT 誤差 25 %」。DFR なら不要動作する条件だが、右図の点は斜線の下（抑制域）にとどまる。内部事故に切り替えると点は斜線の上に跳ね、すぐ動作する。そのぶん検出感度と動作速度を高くできる。</p>`,
   meta:[['器具番号','87 <small>比率差動（変圧器用は 87T と書く例も）</small>'],['入力','保護区間両端の CT 二次電流'],['整定の例','最小動作 0.3 倍・比率 40 %・瞬時'],['動作条件','Id ≥ 比率 × Ir かつ Id ≥ 最小動作値 <small>Ir = (|I1| + |I2|) / 2</small>']],
   chartTitle:'比率差動特性', chartSub:'縦 = 差電流 Id、横 = 通過電流 Ir',
@@ -954,7 +992,7 @@ RELAYS.push({
       detect: pick?`Id/Ir = ${(d.Id/Math.max(d.Ir,1e-6)*100).toFixed(0)}% ≥ ${P.slope}%`:`Id/Ir = ${(d.Id/Math.max(d.Ir,1e-6)*100).toFixed(0)}%`,
       readout:[['差電流 Id',d.Id.toFixed(2)],['通過電流 Ir',d.Ir.toFixed(2)],['比率 Id/Ir',(d.Id/Math.max(d.Ir,1e-6)*100).toFixed(0)+' %']],
       holdText:'外部事故。CT 誤差で差電流は出たが、通過電流に比べて小さいので抑制される（正しい）'}; },
-  misText:'CT の誤差・飽和が比率を超えるほど大きく、外部事故で不要動作した。比率の整定を見直す',
+  misText:'CT の誤差・飽和で差電流が増え、Id / Ir が設定比率を超えて、外部事故で不要動作した。比率の整定を見直す',
   tripText:(S)=>`内部事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放`,
   scene(S,P){ diffScene(S,P,true); },
   chart(c,S,P){ const m=S.m, mx=Math.max(4,P.mult*1.15); const f=H.frame(c,BOX,[0,mx],[0,mx],{xt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),yt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),xl:'通過電流 Ir = (I1 + I2)/2',yl:'差電流 Id'});
@@ -986,7 +1024,7 @@ RELAYS.push({
   measure(S,P){ const on=S.ev&&!S.open; const zf=P.loc/100;
     /* 見掛けのインピーダンス = 線路分 zf∠75° ＋ 事故抵抗 Rf（相手端からの流入は無視した限定例） */
     const tR = on? zf*Math.cos(DR_ANG)+P.rf : 3.2*Math.cos(0.44), tX = on? zf*Math.sin(DR_ANG) : 3.2*Math.sin(0.44);
-    const R=sm(S,'R',tR,0.04), X=sm(S,'X',tX,0.04), Z=Math.hypot(R,X);
+    const R=sm(S,'R',tR,0), X=sm(S,'X',tX,0), Z=Math.hypot(R,X);
     /* 電源インピーダンス 0.3∠80° として I = 1/|Zs + Z|、V = I·|Z|（V・I・Z を同じ計算から出す） */
     const I = S.open?0 : 1/Math.hypot(0.3*Math.cos(1.396)+R, 0.3*Math.sin(1.396)+X), V = S.open?1 : I*Z;
     /* 判定は事故後の Z そのもの（tR, tX）で行い、R−X 図の点の移動は表示だけ */
@@ -995,7 +1033,10 @@ RELAYS.push({
     return {v:[Z], pick:in1||in2, delay: in1?0.05:0.4, elems:[{pick:in1,delay:0.05},{pick:in2,delay:0.4}], R,X,Z,V,I,in1,in2,
       detect: in1?'Z1 の内側':(in2?'Z2 の内側':`|Z| = ${Z.toFixed(2)}`),
       readout:[['電圧 V',V.toFixed(2)],['電流 I',I.toFixed(2)],['Z = V / I', S.open?'—':Z.toFixed(2)],['区間', in1?'第 1 段':in2?'第 2 段':'範囲外']],
-      holdText:'事故点は第 2 段の外（隣の区間）。隣の変電所の継電器が受け持つので動かない（正しい）'}; },
+      holdText: P.loc>120 ? '事故点は第 2 段の外（隣の区間）。隣の変電所の継電器が受け持つので動かない（正しい）'
+        : P.loc>100 ? '相手端の少し先の事故。事故抵抗で Z が第 2 段の外にずれ、後備保護も届かなかった'
+        : '事故抵抗で見掛けの Z が第 2 段の外にずれ、保護区間の中の事故なのに検出できない（アンダーリーチ）',
+      missText:'事故抵抗で見掛けの Z が第 2 段の外にずれ、保護区間の中の事故なのに検出できない（アンダーリーチ）'}; },
   tripText:(S,m,P)=> S.tripEl===0 ? `第 1 段（瞬時）で ${S.tTrip.toFixed(2)} s に動作し、遮断器を開放` : `第 2 段（0.4 s）で ${S.tTrip.toFixed(2)} s に動作。` + (P.loc>100 ? '相手端より先の事故なので、本来は隣の区間の継電器が先に切る。ここでは後備保護として動いた' : (P.rf>0 && P.loc<=80) ? '事故抵抗で Z が右にずれ、第 1 段に入らなかった（アンダーリーチ）' : '遮断器を開放'),
   click(x,y,P){ if(y<130||y>210||x<DR_X(3)||x>DR_X(182)) return false; P.loc=clamp(Math.round((x-230)/220*100),5,180); return true; },
   scene(S,P){ const m=S.m, on=S.ev&&!S.open, fx=DR_X(P.loc);
@@ -1053,7 +1094,9 @@ RELAYS.push({
       detect:`f = ${f.toFixed(2)} Hz`,
       readout:[['周波数',f.toFixed(2)+' Hz'],['整定値',(uf?60-P.set:60+P.set).toFixed(1)+' Hz'],['需給の差',(dPe*100).toFixed(0)+' %'],['動作時間','0.3 s']],
       holdText:'周波数が整定値まで動かなかった。調速機と負荷の自己制御性で持ち直した'}; },
-  tripText:(S,m,P)=>{ const d=P.shed-P.dp, tail = d<-2 ? '。切る量が足りず、周波数が戻りきらない（遮断不足）' : d>2 ? '。切りすぎて周波数が 60 Hz を超えた（過剰遮断）' : '。周波数が戻る';
+  tripText:(S,m,P)=>{ const d=P.shed-P.dp, uf=P.mode==='uf';   /* 動作した瞬間の文なので、この先は「見込み」として書く */
+    const tail = d<-2 ? (uf?'。切る量が足りず、周波数は 60 Hz まで戻りきらない見込み（遮断不足）':'。解列した量が足りず、周波数は高いまま残る見込み（解列不足）')
+      : d>2 ? (uf?'。切りすぎたので、周波数は 60 Hz を超えて上がる見込み（過剰遮断）':'。解列しすぎたので、周波数は 60 Hz を下回る見込み（過剰解列）') : '。周波数は 60 Hz に戻っていく見込み';
     return (P.mode==='uf' ? `${S.tTrip.toFixed(2)} s で動作し、負荷 L3（${P.shed} %）を切り離した` : `${S.tTrip.toFixed(2)} s で動作し、発電機 G2（${P.shed} %）を解列した`) + tail; },
   scene(S,P){ const m=S.m, uf=P.mode==='uf', evOpen=S.ev?1:0, sp=1+(m.f-60)*0.6;
     const g2open = uf? evOpen : S.cb, l2open = uf? 0 : evOpen, l3open = uf? S.cb : 0;
@@ -1244,7 +1287,7 @@ rdfr:{
     pick:[350,26,'差電流が、通過電流に比率を掛けた値を超えた'],
     trip:[350,26,'動作。両側の遮断器を引き外す'],
     open:[350,180,'変圧器を両側から切り離した'],
-    misop:[350,180,'CT の誤差が比率の設定を超えるほど大きく、外部事故で動いてしまった'],
+    misop:[350,180,'CT 誤差で出た差電流が、通過電流 × 比率を超えて、外部事故で動いてしまった'],
     hold:[276,53,'差電流は出たが、抑制コイルの抑える力のほうが大きいので動かない']})[ph]; },
   logic(S,P,m){ const thr=P.slope/100*m.Ir, act=S.pick||S.tripped;
     return {paths:[{conds:[['Id ≥ 最小動作値 0.3',m.Id.toFixed(2),m.Id>=0.3],[`Id ≥ ${P.slope}% × Ir`,`${m.Id.toFixed(2)} ／ ${thr.toFixed(2)}`,m.Id>=thr]], tl:'瞬時', tv:'0.05 s', prog:act?PR(S):0}], out:'トリップ', cb:'52-1・52-2 開'}; },
@@ -1289,10 +1332,15 @@ rpr:{
 /* 保護の目的：'trip' 切るべき事故 / 'notrip' 切ってはいけない / null 整定どおりなら可 */
 const PURPOSE = {
   ocr:P=>P.mult>1?'trip':null, ocgr:P=>P.scen==='in'?'trip':'notrip', ovr:P=>P.rise>=P.set?'trip':null, ovgr:()=>'trip',
-  uvr:P=>P.low>=P.set?null:(P.dur<0.8?'notrip':(P.dur>1.2?'trip':null)), dsr:P=>P.dir==='fw'?'trip':'notrip', dgr:()=>'trip',
+  uvr:P=>P.low>=P.set?null:(P.dur<1.0?'notrip':(P.dur>1.0?'trip':null)),   /* 1.0 s ちょうどは境目なので評価しない */ dsr:P=>P.dir==='fw'?'trip':'notrip', dgr:()=>'trip',
   dfr:P=>P.loc==='in'?'trip':'notrip', rdfr:P=>P.loc==='in'?'trip':'notrip', dr:P=>P.loc<=100?'trip':(P.loc>120?'notrip':null),
   fr:()=>null, rpr:P=>(P.load-P.gen)<=-25?'trip':'notrip' };
 RELAYS.forEach(r=>{ Object.assign(r, EXTRA[r.id]||{}); r.purpose=PURPOSE[r.id]; });
+/* 動作したあと、特性図を動作したときの値で描くもの（どこで動いたかを残す）。FR は動作後の周波数の回復を見せるので数値も動かし続ける */
+['ocr','ocgr','ovgr','dsr','dfr','rdfr','dr','rpr'].forEach(id=>{ RELAYS.find(r=>r.id===id).chartAtTrip=true; });
+RELAYS.find(r=>r.id==='fr').liveAfterTrip=true;
+/* FR は周波数がゆっくり下がるので、観測時間を長く取る（整定・需給のずれの全範囲で、動作はいちばん遅くて 3.9 s） */
+RELAYS.find(r=>r.id==='fr').wait=()=>5;
 RELAYS.find(r=>r.id==='ovgr').missPill='不動作（検出できない）';
 </script>
 
@@ -1320,6 +1368,7 @@ const $ = id=>document.getElementById(id);
 const sceneC=setup($('scene'),720,360), chartC=setup($('chart'),480,400), trendC=setup($('trend'),480,240); G.c=sceneC;
 const DT=0.005, BEAT=1.4, BEATS=new Set(['fault','pick','open','misop','hold']);
 const PALL={}; RELAYS.forEach(r=>{ PALL[r.id]={}; r.params.forEach(p=>PALL[r.id][p.id]=p.value); });
+const DEF=JSON.parse(JSON.stringify(PALL));   /* シナリオは既定値から組み立てる（前に動かした整定を持ち越さない） */
 let R=RELAYS[0], P=PALL[R.id], S=null, speed=0.5, frame=0, tour=null, autoFire=REDUCED?null:1.2;
 let paused=false, hold=0, acc=0, silent=false, maxTe=0, lastPh=null, cam=null, capA=0;
 const OPT={cap:true, beat:!REDUCED, snd:false, pred:false};
@@ -1333,7 +1382,8 @@ function step(dt){
   if(!S.tripped){
     /* 要素ごとにタイマを持ち、どれかが満了したらトリップ（OCR の限時／瞬時、DR の第 1 段／第 2 段） */
     const els=m.elems||[{pick:m.pick,delay:m.delay}]; if(!S.progs||S.progs.length!==els.length) S.progs=els.map(()=>0);
-    let any=false, gi=0; els.forEach((e,i)=>{ if(e.pick){ any=true; S.progs[i]+=dt/Math.max(1e-3,e.delay); } else S.progs[i]=0; if(S.progs[i]>S.progs[gi]) gi=i; });
+    S.prePick = !S.ev && els.some(e=>e.pick);   /* 事故の前はタイマを進めない（初期化中に動かさない） */
+    let any=false, gi=0; els.forEach((e,i)=>{ if(e.pick && S.ev){ any=true; S.progs[i]+=dt/Math.max(1e-3,e.delay); } else S.progs[i]=0; if(S.progs[i]>S.progs[gi]) gi=i; });
     S.pick=any; S.prog=Math.min(1,S.progs[gi]); S.gi=gi;
     if(S.progs[gi]>=1){ S.prog=1; S.tripped=true; S.pick=false; S.tripEl=gi; S.tTrip=S.te; S.shouldAtTrip=purpose()!=='notrip'; S.mAtTrip=m; S.marks.push({t:S.t,k:'trip'}); done.add(R.id); sfx('click'); }
   } else { const was=S.open; S.tripAnim=Math.min(1,S.tripAnim+dt/0.08); if(S.tripAnim>=1) S.cb=Math.min(1,S.cb+dt/0.06); S.flag=Math.min(1,S.flag+dt/0.15); S.open=S.cb>=1; if(S.open&&!was) sfx('cb'); }
@@ -1341,9 +1391,10 @@ function step(dt){
   if(S.ev) maxTe=Math.max(maxTe,S.te);
 }
 function warm(){ S=newState(); G.acc={}; acc=0; silent=true; for(let i=0;i<160;i++) step(DT); silent=false; }
-function resetSim(){ warm(); maxTe=0; lastPh=null; hold=0; paintRack(); }
+function resetSim(){ warm(); maxTe=0; lastPh=null; hold=0; paintRack(); if(R) buildLogic(); }   /* 選んだフィーダなどで図の見出し・出力先が変わるので作り直す */
 /* 予想モードでは、事故を起こす前に結果を予想してもらう */
-function askOrFire(after){ if(OPT.pred && !tour){ pendingFire=after||null; pred=null; $('predict').hidden=false; $('predres').textContent=''; paused=false; return; } if(after) after(); fire(); }
+/* 条件を当ててから予想を聞く（予想の間は事故を起こさない） */
+function askOrFire(after){ if(after) after(); if(OPT.pred && !tour){ resetSim(); pendingFire=true; pred=null; $('predict').hidden=false; $('predres').textContent=''; paused=false; return; } fire(); }
 function fire(){ if(S.ev) resetSim(); S.ev=true; S.te=0; S.marks.push({t:S.t,k:'ev'}); sfx('arc'); paused=false; }
 /* 決定論的に作り直して「事故から te 秒後」を再現する（巻き戻し・コマ送り用） */
 function simTo(te){ const keep=maxTe; warm(); silent=true; S.ev=true; S.te=0; S.marks.push({t:S.t,k:'ev'});
@@ -1353,7 +1404,7 @@ function remT(){ const m=S.m, els=m.elems||[{pick:m.pick,delay:m.delay}]; let r=
 function waitT(){ return typeof R.wait==='function'? R.wait(P) : 2.5; }
 function phase(){ if(!S.ev) return 'normal'; if(S.tripped) return S.open ? (S.shouldAtTrip?'open':'misop') : 'trip'; if(S.pick) return 'pick'; if(S.te>waitT()) return 'hold'; return 'fault'; }
 function verdict(){ const m=S.m;
-  if(!S.ev) return ['', '平常', '平常運転。計測値は整定値の手前にある'];
+  if(!S.ev) return S.prePick ? ['bad','平常時に動作域','事故の前から動作条件を満たしている。このままでは平常時に動いてしまうので、整定や検出方式を見直す'] : ['', '平常', '平常運転。計測値は整定値の手前にある'];
   if(S.tripped) return S.shouldAtTrip ? ['ok', R.tripPill||'正動作', R.tripText?R.tripText(S,S.mAtTrip,P):''] : ['bad','不要動作', R.misText||''];
   if(S.pick){ const rem=remT(); return ['run','時限計測中', `${m.detect}　動作まで あと ${rem>99?'∞':rem.toFixed(2)+' s'}`]; }
   if(S.te>waitT()){ const pu=purpose(); return pu==='trip' ? ['bad', R.missPill||'不動作（検出できない）', m.missText||m.holdText||''] : pu==='notrip' ? ['hold','不動作（正しい）', m.holdText||''] : ['hold','不動作', m.holdText||'']; }
@@ -1378,6 +1429,7 @@ $('rack').addEventListener('click', e=>{ const b=e.target.closest('.plate'); if(
 
 const KTXT={ok:'正動作',hold:'動かない',bad:'不要動作'};
 let roSlots=[];
+const atTrip = () => !!(S.tripped && S.mAtTrip && !R.liveAfterTrip);
 function syncInputs(){ R.params.forEach(p=>{ const el=$(`p-${R.id}-${p.id}`); if(!el) return; el.value=P[p.id]; const o=$(el.id+'-o'); if(o) o.textContent=p.fmt(P[p.id]); }); paintPresets(); }
 function paintPresets(){ $('presets').querySelectorAll('.preset').forEach(b=>{ const pr=R.presets[+b.dataset.i]; b.setAttribute('aria-pressed', Object.entries(pr.p).every(([k,v])=>String(P[k])===String(v))); }); }
 function buildLogic(){ const L=R.logic(S,P,S.m), multi=L.paths.length>1;
@@ -1407,21 +1459,22 @@ function selectRelay(id){
   $('presets').innerHTML=(R.presets||[]).map((p,i)=>`<button class="preset" data-i="${i}" aria-pressed="false">${p.l}<span class="k ${p.k}">${p.t||KTXT[p.k]}</span></button>`).join('');
   paused=false; resetSim(); cam=null; capA=0; pred=null; $('predict').hidden=true; $('predres').textContent='';
   $('readout').innerHTML=S.m.readout.map(([k])=>`<div class="ro"><span>${k}</span><b>—</b></div>`).join(''); roSlots=[...$('readout').querySelectorAll('b')];
-  buildLogic(); paintPresets(); paintRack(); updateDOM();
+  buildLogic(); paintPresets(); paintRack(); updateDOM(); if(typeof paintExplain==='function') paintExplain();
   try{ history.replaceState(null,'','#'+R.id); }catch(e){}
 }
 function onParam(el, final){ const k=el.dataset.k; if(!k) return; const def=R.params.find(p=>p.id===k);
   if(def.type==='select'){ P[k]=el.value; if(def.reset) resetSim(); } else { P[k]=+el.value; const o=$(el.id+'-o'); if(o) o.textContent=def.fmt(P[k]); }
-  if(final && paused && S.ev) simTo(S.te); paintPresets(); }
+  /* 事故の途中で条件を変えたら、事故の最初からその条件で計算し直す（巻き戻しと同じ結果になる） */
+  if(final && S.ev) simTo(S.te); buildLogic(); paintPresets(); }
 $('params').addEventListener('input', e=>onParam(e.target,false));
 $('params').addEventListener('change', e=>onParam(e.target,true));
-$('presets').addEventListener('click', e=>{ const b=e.target.closest('.preset'); if(!b) return; stopTour(); autoFire=null; const pr=R.presets[+b.dataset.i].p; askOrFire(()=>{ Object.assign(P,pr); syncInputs(); resetSim(); }); });
+$('presets').addEventListener('click', e=>{ const b=e.target.closest('.preset'); if(!b) return; stopTour(); autoFire=null; const pr=R.presets[+b.dataset.i].p; askOrFire(()=>{ Object.assign(P,DEF[R.id],pr); syncInputs(); resetSim(); }); });
 
 /* 再生操作 */
 function togglePause(){ if(hold>0){ hold=0; return; } paused=!paused; }
 function frameStep(d){ stopTour(); autoFire=null; paused=true; hold=0; if(!S.ev && d>0){ fire(); paused=true; return; } simTo(clamp(S.te+d,0,Math.max(maxTe,S.te+d))); }
 $('fire').addEventListener('click', ()=>{ stopTour(); autoFire=null; askOrFire(); });
-$('predict').addEventListener('click', e=>{ const b=e.target.closest('[data-p]'); if(!b) return; pred=b.dataset.p; $('predict').hidden=true; if(pendingFire) pendingFire(); pendingFire=null; fire(); });
+$('predict').addEventListener('click', e=>{ const b=e.target.closest('[data-p]'); if(!b) return; pred=b.dataset.p; $('predict').hidden=true; pendingFire=null; fire(); });
 $('reset').addEventListener('click', ()=>{ stopTour(); autoFire=null; paused=false; resetSim(); });
 $('play').addEventListener('click', ()=>{ autoFire=null; togglePause(); });
 $('back').addEventListener('click', ()=>frameStep(-0.01));
@@ -1434,14 +1487,18 @@ document.addEventListener('keydown', e=>{ const tg=e.target.tagName; if(tg==='IN
   if(e.key===' '){ e.preventDefault(); autoFire=null; togglePause(); } else if(e.key==='f'||e.key==='F'){ stopTour(); autoFire=null; askOrFire(); } else if(e.key==='r'||e.key==='R'){ stopTour(); autoFire=null; paused=false; resetSim(); }
   else if(e.key==='ArrowRight'){ e.preventDefault(); frameStep(0.01); } else if(e.key==='ArrowLeft'){ e.preventDefault(); frameStep(-0.01); } });
 $('scene').addEventListener('click', e=>{ if(!R.click) return; const r=$('scene').getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*720, y=(e.clientY-r.top)/r.height*360;
-  if(R.click(x,y,P)){ stopTour(); autoFire=null; syncInputs(); resetSim(); fire(); } });
+  if(R.click(x,y,P)){ stopTour(); autoFire=null; askOrFire(()=>{ syncInputs(); resetSim(); }); } });
 
 function updateDOM(){
   const [cls,pill,txt]=verdict(); const v=$('verdict'); v.className='verdict '+cls; const html=`<span class="pill">${pill}</span><span>${txt}</span>`; if(v._h!==html){ v.innerHTML=html; v._h=html; }
   $('fire').textContent = S.ev ? 'もう一度起こす' : R.fireLabel;
   if(pred && S.ev && (cls==='ok'||cls==='bad'||cls==='hold') && (S.open||!S.tripped)){ const got = S.tripped ? (S.shouldAtTrip?'trip':'misop') : 'notrip'; const PL={trip:'正しく動作する',notrip:'動作しない',misop:'誤って動作する'};
     const t=`予想「${PL[pred]}」→ 結果「${PL[got]}」 ${pred===got?'○ 当たり':'× はずれ'}`; if($('predres').textContent!==t) $('predres').textContent=t; }
-  S.m.readout.forEach(([,val],i)=>{ if(roSlots[i] && roSlots[i].textContent!==val) roSlots[i].textContent=val; });
+  /* 動作したあとは、動作したときの値を残す（FR のように動作後の推移を見せたいものは除く） */
+  /* 予想モードでは、答えて結果が出るまでシナリオの札（正動作など）を隠す */
+  $('presets').classList.toggle('hidek', OPT.pred && !(pred && S.ev && (S.tripped || S.te>waitT())));
+  const frozen = atTrip(); $('readout').classList.toggle('frozen', !!frozen);
+  (frozen ? S.mAtTrip : S.m).readout.forEach(([,val],i)=>{ if(roSlots[i] && roSlots[i].textContent!==val) roSlots[i].textContent=val; });
   const sc=$('scrub'); sc.max=Math.max(2,maxTe).toFixed(3); if(document.activeElement!==sc) sc.value=S.ev?S.te:0;
   $('scrubo').textContent = S.ev ? `事故から ${S.te.toFixed(3)} s` : '事故前';
   const pb=$('play'); const ps=paused||hold>0; pb.textContent=ps?'▶':'❚❚'; pb.setAttribute('aria-pressed',paused);
@@ -1483,6 +1540,7 @@ let last=performance.now();
 let userScroll=0; ['pointerdown','touchstart','wheel'].forEach(ev=>$('scene').parentElement.addEventListener(ev,()=>{ userScroll=performance.now()+4000; },{passive:true}));
 function loop(now){ const rd=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
   if(VIEW==='sld'){ sldFrame(rd); if(++frame%3===0) sDOM(); requestAnimationFrame(loop); return; }
+  if(VIEW==='all'){ requestAnimationFrame(loop); return; }   /* 一覧の図は止まった絵 */
   let sp=speed; if(OPT.beat && phase()==='trip') sp=Math.min(sp,0.1);   /* トリップ指令が走る間はスロー */
   let simDt=0;
   if(hold>0) hold=Math.max(0,hold-rd);
@@ -1497,7 +1555,7 @@ function loop(now){ const rd=Math.min(0.05,Math.max(0,(now-last)/1000)); last=no
   if(paused) G.tag(40,16,'一時停止',C.target);
   /* 画面が狭く結線図が横スクロールになるときは、解説の指し先を追いかける（指で触ったら 4 秒は追わない） */
   const wrap=$('scene').parentElement; if(cam && wrap.scrollWidth>wrap.clientWidth+4 && performance.now()>userScroll){ const tx=cam.x/720*$('scene').clientWidth-wrap.clientWidth/2; wrap.scrollLeft+= (tx-wrap.scrollLeft)*(1-Math.exp(-rd*5)); }
-  chartC.clearRect(0,0,480,400); R.chart(chartC,S,P);
+  chartC.clearRect(0,0,480,400); R.chart(chartC, (atTrip() && R.chartAtTrip) ? {...S, m:S.mAtTrip} : S, P);
   drawTrend(trendC,S,R.trend(P));
   if(autoFire!=null){ autoFire-=rd; if(autoFire<=0){ autoFire=null; if(!S.ev) fire(); } }
   tourTick(rd);
@@ -1506,6 +1564,158 @@ function loop(now){ const rd=Math.min(0.05,Math.max(0,(now-last)/1000)); last=no
 const h0=(location.hash||'').slice(1); selectRelay(RELAYS.some(r=>r.id===h0)?h0:0);
 /* 単線結線図タブのスクリプト（後ろの <script>）を読み終えてから回し始める */
 if(document.readyState==='loading') addEventListener('DOMContentLoaded',()=>requestAnimationFrame(loop)); else requestAnimationFrame(loop);
+</script>
+
+<script>
+"use strict";
+/* ===== 解説：目的・物理・判定・戻るまで（継電器ごと）と、12 種の一覧 =====
+   物理（事故で起きること）と判定（継電器が見て決めること）を分けて書く。時間は目安 */
+const xv=(s)=>'<i>'+s+'</i>';
+const EXPL={
+ocr:{one:{see:'電流の大きさ', judge:'I が整定値の M 倍 → 反限時で動作', aim:'短絡・過負荷から電線と機器を守る', back:'配電線は約 1 分で再閉路'},
+  aim:['短絡や過負荷の大電流から、電線・ケーブル・変圧器を守る（熱で絶縁が傷み、電磁力で機器が壊れる）','事故点に近い遮断器ほど早く動くよう時間差をつけ（時限協調）、停電を事故点の近くだけにする','近くの大電流の事故は、瞬時要素ですぐに切る'],
+  phys:{t:'短絡すると、電流は電源から事故点までのインピーダンスだけで決まり、負荷電流の数倍〜数十倍になる。発熱は電流の 2 乗と時間に比例する。',
+    eq:[xv('I')+'<sub>s</sub> = (100 / %'+xv('Z')+') × '+xv('I')+'<sub>n</sub>　（'+xv('I')+'<sub>n</sub>：基準電流。6.6 kV・10 MVA で 875 A）','発熱 '+xv('Q')+' ∝ '+xv('I')+'<sup>2</sup>'+xv('t')]},
+  judge:{t:'CT で電流を測り、整定値（タップ）の何倍か（'+xv('M')+'）で動作時間を決める。電流が大きいほど早く動く反限時特性。',
+    eq:[xv('M')+' = '+xv('I')+' / '+xv('I')+'<sub>set</sub>',xv('t')+' = 0.14 / ('+xv('M')+'<sup>0.02</sup> − 1) × '+xv('L')+' / 10　（JIS C 4602 反限時 NI、'+xv('L')+'：レバー）','瞬時要素：'+xv('M')+' ≥ 12 なら 0.04 s']},
+  after:{t:'遮断器が開けば、事故電流は次の電流零点（半サイクル以内）で止まる。配電線では、変電所の遮断器が約 1 分後に再閉路し、事故が消えていれば送電が戻る。電線が切れたなどの永久事故は、修理が終わるまで停電する。',
+    tl:[['事故',0,'ev'],['瞬時要素 0.04 s',0.04,'relay'],['限時要素 1.5 s（4 倍・レバー 3）',1.5,'relay'],['遮断器が開く',1.55,'cb'],['再閉路（配電線）約 1 分',60,'back'],['修理して送電 数時間',3*3600,'rest']]}},
+ocgr:{one:{see:'零相電流の大きさ', judge:'3I0 ≥ 0.2 A が 0.2 s', aim:'構内の地絡を責任分界点で切る', back:'構内は修理まで停電'},
+  aim:['地絡を早く見つけて切り、感電や火災、機器の焼損を防ぐ','構内の地絡を責任分界点（PAS など）で切り、配電線のほかの需要家へ広げない'],
+  phys:{t:'6.6 kV の配電線は非接地系なので、1 線が地絡しても、電流が大地から戻る道は電線の対地静電容量しかない。地絡電流は数 A と小さく、短絡のように大きくはならない。',
+    eq:[xv('I')+'<sub>g</sub> ≈ 3ω'+xv('CE')+'　（'+xv('C')+'：1 相の対地静電容量、'+xv('E')+'：相電圧）','6.6 kV・60 Hz・0.30 μF/km で約 1.3 A/km']},
+  judge:{t:'ZCT に 3 相の電線をまとめて通し、3 相電流の和（零相電流）を測る。平常時は打ち消し合ってほぼ 0。整定値を超えた状態が続けば動く。向きは見ない。',
+    eq:['3'+xv('I')+'<sub>0</sub> = '+xv('I')+'<sub>a</sub> + '+xv('I')+'<sub>b</sub> + '+xv('I')+'<sub>c</sub>','3'+xv('I')+'<sub>0</sub> ≥ 0.2 A が 0.2 s 続けば動作']},
+  after:{t:'PAS や受電遮断器が開くと、地絡電流は止まる。配電線のほかの需要家は停電しない。構内は、電気主任技術者が原因を見つけて直すまで停電する。',
+    tl:[['地絡',0,'ev'],['OCGR 動作 0.2 s',0.2,'relay'],['遮断器が開く 0.25 s',0.25,'cb'],['原因を直して送電 数十分〜数時間',1.5*3600,'rest']]}},
+ovr:{one:{see:'電圧の大きさ', judge:'V ≥ 115 % が 1.0 s', aim:'過電圧から絶縁を守る', back:'母線は系統の電圧にすぐ戻る'},
+  aim:['発電機の自動電圧調整器（AVR）の故障などで電圧が上がりすぎたとき、発電機を切り離して機器の絶縁を守る','短い電圧上昇では動かず、続いたときだけ切る'],
+  phys:{t:'発電機の端子電圧は、界磁電流でつくる内部起電力から、内部リアクタンスでの電圧降下を引いたもの。AVR が暴走して界磁電流が増えると、電圧は界磁回路の時定数で上がっていく。変圧器は電圧が上がると鉄心が飽和し、励磁電流が急に増える。',
+    eq:[xv('V')+' ≈ '+xv('E')+' − j'+xv('XI')+'　（'+xv('E')+'：界磁で決まる内部起電力）']},
+  judge:{t:'VT で電圧を測り、整定値（ここでは 115 %）を超えた状態が動作時間（1.0 s）続けば動く。',
+    eq:[xv('V')+' ≥ '+xv('V')+'<sub>set</sub>（115 %）が 1.0 s 続けば動作']},
+  after:{t:'発電機の遮断器が開くと、母線は系統の電圧（100 %）に数サイクルで戻る。発電機は AVR を直してから並列し直す。',
+    tl:[['電圧が上がり始める',0,'ev'],['OVR 動作 約 1.2 s',1.225,'relay'],['発電機を切り離す',1.28,'cb'],['AVR を直して再並列 数時間',4*3600,'rest']]}},
+ovgr:{one:{see:'零相電圧の大きさ', judge:'V0 ≥ 10 % が 0.5 s', aim:'地絡の発生を確実に見つける', back:'健全フィーダも止まる（選択性なし）'},
+  aim:['地絡が起きたことを、零相電圧で確実に見つける（どのフィーダかは分からない）','DGR と組んで事故フィーダだけを切る。分散型電源では、系統側の地絡で発電設備を切り離す（事故点へ電気を送り続けない）'],
+  phys:{t:'非接地系で 1 線が地絡すると、大地の電位が地絡相の電圧まで動き、3 相の対地電圧のつり合いが崩れる。この崩れが零相電圧。完全地絡なら相電圧と同じ大きさになり、地絡抵抗があると小さくなり、位相も回る。',
+    eq:[xv('V')+'<sub>0</sub> = ('+xv('V')+'<sub>a</sub> + '+xv('V')+'<sub>b</sub> + '+xv('V')+'<sub>c</sub>) / 3','大地の点 '+xv('E')+' = '+xv('E')+'<sub>a</sub> / (1 + j'+xv('R')+'<sub>f</sub> / '+xv('X')+'<sub>C</sub>)　（ここでは '+xv('X')+'<sub>C</sub> = 3 kΩ）','|'+xv('V')+'<sub>0</sub>| = 100 / √(1 + ('+xv('R')+'<sub>f</sub> / '+xv('X')+'<sub>C</sub>)<sup>2</sup>) %']},
+  judge:{t:'GPT の開放三角や ZPD で零相電圧を取り出し、整定値（10 %）を超えた状態が続けば動く。母線につながる全フィーダに同じ V0 が出るので、選択性はない。',
+    eq:['|'+xv('V')+'<sub>0</sub>| ≥ 10 % が 0.5 s 続けば動作']},
+  after:{t:'受電遮断器が開くと零相電圧は消えるが、健全なフィーダも一緒に停電する。配電線側の事故なら、変電所が事故を切り、約 1 分後に再閉路する。',
+    tl:[['地絡',0,'ev'],['OVGR 動作 0.5 s',0.5,'relay'],['受電遮断器が開く 0.55 s',0.55,'cb'],['事故フィーダを直して送電 数時間',3*3600,'rest']]}},
+uvr:{one:{see:'電圧の大きさ（下がる）', judge:'V < 80 % が 1.0 s', aim:'停電を見つけて非常用発電機を起動', back:'非常用発電機は 40 s 以内に給電'},
+  aim:['停電や大きな電圧低下を見つけ、非常用発電機を起動する','停電中に電動機がつながったままだと、復電したとき一斉に始動して大電流が流れる。受電遮断器を開いてこれを防ぐ（不足電圧引外し）','瞬時電圧低下（瞬低）では動かない'],
+  phys:{t:'電圧は、電源から負荷までの電圧降下で決まる。停電なら 0、近くの短絡なら事故点の手前で大きく下がる。落雷による瞬低は、送電線の遮断器が事故を切るまでの短い時間（多くは 0.1 s 前後）だけ続く。',
+    eq:[xv('V')+' = '+xv('E')+' − '+xv('ZI')+'　（短絡すると '+xv('I')+' が増え、'+xv('V')+' が下がる）']},
+  judge:{t:'VT で電圧を測り、整定値（80 %）を下回った状態が 1.0 s 続けば動く。途中で電圧が戻れば、タイマは 0 に戻る。',
+    eq:[xv('V')+' < '+xv('V')+'<sub>set</sub>（80 %）が 1.0 s 続けば動作']},
+  after:{t:'非常用発電機は、停電から 40 秒以内に電圧を確立することが求められる（消防用設備の非常電源の基準）。画面では 1.4 s に縮めている。商用電源が戻るのは、配電線の再閉路なら約 1 分、修理が要る事故なら数時間。',
+    tl:[['停電',0,'ev'],['瞬低ならここで戻る 0.1 s',0.1,'back'],['UVR 動作・発電機に起動指令 1.0 s',1.0,'relay'],['非常用発電機が電圧確立 40 s 以内',40,'back'],['商用の復電（再閉路）約 1 分',60,'rest']]}},
+dsr:{one:{see:'電流の向き（電圧が基準）', judge:'向きが動作域で 0.2 s', aim:'事故区間の両端だけを切る', back:'送電線は約 1 s で再閉路'},
+  aim:['両側に電源がある線路やループ系統で、事故区間の両端だけを切る（選択遮断）','電流の大きさだけでは事故の場所を区別できないので、向きで見分ける'],
+  phys:{t:'短絡電流は電源から事故点へ向かって流れる。事故が前方（保護する線路側）か後方かで、継電器の位置を流れる電流の向きが逆になる。送電線は誘導性なので、短絡電流は電圧より 60〜80° 遅れる。',
+    eq:[xv('θ')+' = arg('+xv('I')+' / '+xv('V')+')　（ここでは前方の事故で −70°、後方の事故で +110°）']},
+  judge:{t:'電流の大きさに加えて、電圧を基準にした電流の位相を見る。最大感度角 θm の向きから ±90° の範囲（動作域）に入れば、前方の事故と判定する。',
+    eq:['|'+xv('I')+'| ≥ '+xv('I')+'<sub>set</sub> かつ cos('+xv('θ')+' − '+xv('θ')+'<sub>m</sub>) > 0　（'+xv('θ')+'<sub>m</sub> = 60° 遅れ）','0.2 s 続けば動作']},
+  after:{t:'両端の遮断器が開けば、事故点のアークが消えて空気の絶縁が戻る。送電線では、絶縁が戻るのを待って高速度再閉路（約 1 秒。電圧階級や事業者で違う）をかけ、多くは送電が戻る。',
+    tl:[['短絡',0,'ev'],['DSR 動作 0.2 s',0.2,'relay'],['自端が開く 0.25 s',0.25,'cb'],['相手端も開く 0.3 s',0.3,'cb'],['高速度再閉路 約 1 s',1.3,'back'],['永久事故なら修理 数時間',4*3600,'rest']]}},
+dgr:{one:{see:'零相電流の向き（V0 が基準）', judge:'V0・I0 が整定以上で向きが構内', aim:'地絡フィーダだけを切る', back:'健全フィーダは止まらない'},
+  aim:['地絡したフィーダだけを選んで切り、健全なフィーダは送電を続ける','ケーブルが長く充電電流が大きい電路でも、よその地絡では動かない（もらい事故を防ぐ）'],
+  phys:{t:'非接地系の地絡では、各フィーダの対地静電容量を通る充電電流が地絡点へ集まる。健全フィーダには自分の充電電流が流れ、地絡フィーダには、健全フィーダの分と GPT の抵抗分を合わせた電流が逆向きに流れる。',
+    eq:['健全フィーダ '+xv('k')+'：'+xv('I')+'<sub>0'+xv('k')+'</sub> = j'+xv('B')+'<sub>'+xv('k')+'</sub>'+xv('V')+'<sub>0</sub>','地絡フィーダ：'+xv('I')+'<sub>0</sub> = −(Σ j'+xv('B')+'<sub>'+xv('k')+'</sub> + '+xv('G')+')'+xv('V')+'<sub>0</sub>','継電器は −'+xv('V')+'<sub>0</sub> を基準に取る。地絡フィーダは atan(Σ'+xv('B')+' / '+xv('G')+') 進み、健全フィーダは 90° 遅れ']},
+  judge:{t:'GPT で V0、各フィーダの ZCT で I0 を測る。V0 と I0 がどちらも整定値以上で、I0 の位相が動作域（最大感度角 45° 進みから ±90°）に入れば、そのフィーダの事故と判定する。',
+    eq:['|'+xv('V')+'<sub>0</sub>| ≥ 5 % かつ |'+xv('I')+'<sub>0</sub>| ≥ 0.2 A かつ cos('+xv('θ')+' − 45°) > 0','0.2 s 続けば動作']},
+  after:{t:'事故フィーダの遮断器が開くと、V0 も I0 も消える。健全フィーダは停電しない。配電線の事故なら、変電所が約 1 分後に再閉路し、時限順送で区分開閉器を順に入れて事故区間を探す。',
+    tl:[['地絡',0,'ev'],['DGR 動作 0.2 s',0.2,'relay'],['事故フィーダだけ開く 0.25 s',0.25,'cb'],['再閉路・時限順送 約 1 分〜',60,'back'],['事故区間を直して送電 数時間',3*3600,'rest']]}},
+dfr:{one:{see:'入る電流と出る電流の差', judge:'Id = |I1 − I2| ≥ 0.3', aim:'区間の中の事故だけを瞬時に切る', back:'再閉路しない。修理は数週間〜'},
+  aim:['変圧器・母線・発電機の内部事故だけを、時間差なしで（瞬時に）切る','区間の外の事故では動かないので、ほかの保護と時間で協調しなくてよい','早く切ることで、変圧器の中のアークによる油の分解や火災、損傷の広がりを防ぐ'],
+  phys:{t:'保護区間の中に事故がなければ、入る電流と出る電流は等しい（キルヒホッフの電流則）。区間の中で事故が起きると、入った電流の一部が事故点へ流れ、出ていく電流と合わなくなる。',
+    eq:['区間の外の事故：'+xv('I')+'<sub>1</sub> = '+xv('I')+'<sub>2</sub>　→　'+xv('I')+'<sub>d</sub> = 0','区間の中の事故：'+xv('I')+'<sub>d</sub> = |'+xv('I')+'<sub>1</sub> − '+xv('I')+'<sub>2</sub>| = 事故点へ流れる電流']},
+  judge:{t:'区間の両端の CT 二次電流を突き合わせ、差電流が差動コイルに流れたら動く（変流比と位相を補償したあとの値）。変圧器では、投入したときの励磁突入電流でも差電流が出るので、第 2 調波で動作を止める。',
+    eq:[xv('I')+'<sub>d</sub> = |'+xv('I')+'<sub>1</sub> − '+xv('I')+'<sub>2</sub>| ≥ 0.3（定格比）なら瞬時に動作']},
+  after:{t:'両側の遮断器が開くと、変圧器は電源から切り離される。内部事故は永久事故なので再閉路しない。負荷はほかの変圧器や連系線へ切り替えて数分〜数十分で送電を戻し、変圧器は点検・修理（数週間〜数か月）に回る。',
+    tl:[['内部事故',0,'ev'],['DFR 動作 約 0.05 s',0.055,'relay'],['両側の遮断器が開く 約 0.1 s',0.105,'cb'],['ほかの変圧器へ切り替え 数分〜',600,'back'],['変圧器の修理 数週間〜数か月',60*86400,'rest']]}},
+rdfr:{one:{see:'差電流と通過電流の比', judge:'Id ≥ 40 % × Ir', aim:'CT 誤差に強い差動保護', back:'再閉路しない。修理は数週間〜'},
+  aim:['DFR と同じく、区間の中の事故だけを瞬時に切る','外部事故の大電流で CT が誤差を出しても動かないよう、通過電流が大きいほど、動作に必要な差電流を大きくする','そのぶん、小さな内部事故への感度を上げられる'],
+  phys:{t:'外部事故では、大きな電流が区間を通り抜ける。両端の CT の特性差や飽和で、本当は 0 のはずの差電流が、通過電流に比例して現れる。',
+    eq:['外部事故の見掛けの差電流：'+xv('I')+'<sub>d</sub> ≈ '+xv('ε')+' × '+xv('I')+'　（'+xv('ε')+'：CT 誤差）',xv('I')+'<sub>d</sub> / '+xv('I')+'<sub>r</sub> = '+xv('ε')+' / (1 − '+xv('ε')+' / 2)']},
+  judge:{t:'差電流と通過電流（抑制電流）の比を見る。比が設定比率（40 %）以上で、差電流が最小動作値以上なら動く。',
+    eq:[xv('I')+'<sub>r</sub> = (|'+xv('I')+'<sub>1</sub>| + |'+xv('I')+'<sub>2</sub>|) / 2',xv('I')+'<sub>d</sub> ≥ 0.4 × '+xv('I')+'<sub>r</sub> かつ '+xv('I')+'<sub>d</sub> ≥ 0.3 なら瞬時に動作','比率 40 % なら、CT 誤差およそ 33 % が不要動作の境目']},
+  after:{t:'DFR と同じ。両側の遮断器が開いて変圧器を切り離し、再閉路はしない。負荷はほかの変圧器へ切り替えて送電を戻す。',
+    tl:[['内部事故',0,'ev'],['RDFR 動作 約 0.05 s',0.055,'relay'],['両側の遮断器が開く 約 0.1 s',0.105,'cb'],['ほかの変圧器へ切り替え 数分〜',600,'back'],['変圧器の修理 数週間〜数か月',60*86400,'rest']]}},
+dr:{one:{see:'インピーダンス（V ÷ I）', judge:'Z が Z1 の円の中 → 瞬時', aim:'距離で動作時間を変える', back:'送電線は約 1 s で再閉路'},
+  aim:['送電線の事故点までの距離で動作時間を変える（近い事故はすぐ、遠い事故は待つ）','電源の強さ（短絡容量）が変わっても、届く範囲がほぼ変わらない。OCR より整定が安定する','第 2 段で相手端の母線まで確実に見て、隣の区間の後備保護にもなる'],
+  phys:{t:'事故点では電圧が 0 になるので、継電器の位置の電圧は、事故点までの線路での電圧降下に等しい。均一な線路なら、インピーダンスは距離に比例する。事故点に抵抗があると、見掛けのインピーダンスが右（抵抗の向き）にずれる。',
+    eq:[xv('V')+' = '+xv('zx')+' · '+xv('I')+'　（'+xv('z')+'：単位長さあたりのインピーダンス、'+xv('x')+'：事故点までの距離）','事故抵抗があるとき：'+xv('Z')+' = '+xv('zx')+' + '+xv('R')+'<sub>f</sub>(1 + '+xv('I')+'<sub>相手端</sub> / '+xv('I')+'<sub>自端</sub>)']},
+  judge:{t:'電圧を電流で割ってインピーダンスを求め、R−X 平面の動作域（モー特性の円）に入れば動く。第 1 段は線路の 80 % まで瞬時、第 2 段は 120 % まで 0.4 s。',
+    eq:[xv('Z')+' = '+xv('V')+' / '+xv('I'),xv('Z')+' が Z1（80 %）の円の中なら瞬時、Z2（120 %）の円の中なら 0.4 s で動作']},
+  after:{t:'両端の遮断器が開けば、アークが消えて絶縁が戻る。送電線では高速度再閉路（約 1 秒）で、多くは送電が戻る。',
+    tl:[['短絡',0,'ev'],['第 1 段で動作 約 0.05 s',0.055,'relay'],['遮断器が開く 約 0.1 s',0.1,'cb'],['第 2 段なら 0.4 s',0.405,'relay'],['高速度再閉路 約 1 s',1.1,'back'],['永久事故なら修理 数時間',4*3600,'rest']]}},
+fr:{one:{see:'周波数', judge:'f ≤ 59.0 Hz が 0.3 s', aim:'負荷を切ってブラックアウトを防ぐ', back:'周波数は 5〜10 s で戻る'},
+  aim:['大きな電源が脱落して周波数が下がり続けるとき、負荷の一部を切り離して（UFR）系統全体の停電を防ぐ','周波数が下がりすぎると、発電機が自分を守るために次々と解列し、ブラックアウトにつながる。その連鎖を手前で止める','周波数が上がりすぎたとき（OFR）は、発電機を切り離す'],
+  phys:{t:'発電と需要の差は、発電機の回転子の運動エネルギーで一時的にまかなわれ、回転（周波数）が変わる。下がる速さは慣性定数 H で決まる。調速機が出力を増やし、負荷の自己制御性も効いて、数秒で底を打つ。',
+    eq:['2'+xv('H')+' dΔ'+xv('f')+'/d'+xv('t')+' = Δ'+xv('P')+'<sub>m</sub> − Δ'+xv('P')+'<sub>e</sub> − '+xv('D')+'Δ'+xv('f')+'　（pu）','直後の変化率 d'+xv('f')+'/d'+xv('t')+' = −Δ'+xv('P')+' · '+xv('f')+'<sub>0</sub> / 2'+xv('H')+'　（10 % 脱落・'+xv('H')+' = 4 s で −0.75 Hz/s）']},
+  judge:{t:'VT 電圧の周波数を測り、整定値（UFR 59.0 Hz）を下回った状態が 0.3 s 続けば動く。',
+    eq:[xv('f')+' ≤ 59.0 Hz（UFR）、または '+xv('f')+' ≥ 61.0 Hz（OFR）が 0.3 s 続けば動作']},
+  after:{t:'負荷を切って需給がつり合うと、周波数は調速機の働きで戻っていく。このモデル（10 % 脱落・10 % 遮断）では約 5 s で 60 Hz 付近に戻り、10 s ほどで落ち着く。切った負荷は、ほかの発電機の出力が上がってから、数分〜数十分で順に送電し直す。',
+    tl:[['電源脱落',0,'ev'],['UFR 動作・負荷遮断 約 2.0 s',1.97,'relay'],['周波数が 60 Hz 付近に戻る 約 5 s',5,'back'],['落ち着く 約 10 s',10,'back'],['切った負荷へ送電し直す 数分〜数十分',1200,'rest']]}},
+rpr:{one:{see:'電力の向き', judge:'P ≤ −25 kW が 0.5 s', aim:'自家発の逆潮流を止める', back:'受電にすぐ戻る'},
+  aim:['逆潮流なしの契約で系統につないでいる自家発電設備が、系統へ電気を流し出さないようにする','流れ出すと、配電線の電圧が上がったり、系統側の保護や運用の前提が崩れたりする'],
+  phys:{t:'受電点の電力は、構内の負荷から自家発の発電を引いたもの。負荷が減って発電が上回ると、電力の向きが逆（系統へ流れ出す向き）になる。3 相が不平衡だと、相ごとの電力の向きが 3 相の合計と食い違うことがある。',
+    eq:[xv('P')+' = '+xv('P')+'<sub>負荷</sub> − '+xv('P')+'<sub>発電</sub>　（'+xv('P')+' < 0 が逆潮流）',xv('P')+' = √3 '+xv('VI')+' cos'+xv('φ')]},
+  judge:{t:'電圧と電流から有効電力の向きと大きさを求め、逆向きの電力が整定値（発電機定格 500 kW の 5 %、25 kW）を超えた状態が 0.5 s 続けば動く。1 相だけで見る方式は不平衡に弱い。',
+    eq:[xv('P')+' ≤ −25 kW が 0.5 s 続けば動作']},
+  after:{t:'発電機の遮断器が開くと、構内は系統からの受電に戻り、電力の向きはすぐ正に戻る。発電機は、構内の負荷が増えて逆潮流の心配がなくなってから並列し直す。',
+    tl:[['負荷が減る',0,'ev'],['RPR 動作 約 0.65 s',0.65,'relay'],['発電機を切り離す',0.7,'cb'],['負荷が増えてから再並列 数十分〜',1800,'rest']]}},
+};
+/* 時間のものさし（対数軸 10 ms〜1 か月）。ラベルは重ならないよう上下の段に振り分ける */
+const RL_TICKS=[[0.01,'10 ms'],[0.1,'0.1 s'],[1,'1 s'],[10,'10 s'],[60,'1 分'],[600,'10 分'],[3600,'1 時間'],[86400,'1 日'],[604800,'1 週'],[2.6e6,'1 か月']];
+function xRuler(tl){ const W=720, x0=70, x1=700, X=t=> t<=0 ? 34 : x0+(Math.log10(t)+2)/(Math.log10(2.6e6)+2)*(x1-x0);
+  const pts=tl.map(([l,t,k])=>({l,t,k,x:X(t),w:l.length*12+8})).sort((a,b)=>a.x-b.x), rows={up:[],dn:[]}; let maxUp=0, maxDn=0;
+  pts.forEach((p,i)=>{ const side = i%2===0 ? 'up' : 'dn'; const sides=[side, side==='up'?'dn':'up'];
+    for(let r=0;r<6;r++){ const s=sides[r%2], lv=Math.floor(r/2); const row=(rows[s][lv]=rows[s][lv]||[]); const left=Math.min(Math.max(p.x-6, 4), W-p.w-4);
+      if(row.every(q=>left>q.r+6 || left+p.w<q.l-6)){ row.push({l:left,r:left+p.w}); p.side=s; p.lv=lv; p.lx=left; if(s==='up') maxUp=Math.max(maxUp,lv+1); else maxDn=Math.max(maxDn,lv+1); break; } } });
+  const H0=20+maxUp*22, H=H0+46+maxDn*22, ay=H0+16;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="事故から戻るまでの時間のものさし（対数軸）">`;
+  s+=`<line class="rl-axis" x1="24" y1="${ay}" x2="${x1+8}" y2="${ay}"/>`;
+  RL_TICKS.forEach(([t,l])=>{ const x=X(t); s+=`<line class="rl-tick" x1="${x}" y1="${ay-5}" x2="${x}" y2="${ay+5}"/><text class="rl-tl" x="${x}" y="${ay+18}" text-anchor="middle">${l}</text>`; });
+  s+=`<text class="rl-tl" x="34" y="${ay+18}" text-anchor="middle">0</text>`;
+  pts.forEach(p=>{ if(p.side==null) return; const y = p.side==='up' ? H0-p.lv*22 : ay+34+p.lv*22+12;
+    s+=`<line class="rl-lead rl-${p.k}" x1="${p.x}" y1="${ay}" x2="${p.x}" y2="${p.side==='up'?y+4:y-12}"/><circle class="rl-${p.k}" cx="${p.x}" cy="${ay}" r="5"/><text class="rl-lab rl-t${p.k}" x="${p.lx}" y="${y}">${p.l}</text>`; });
+  return s+'</svg>'; }
+function paintExplain(){ const e=EXPL[R.id], g=$('exgrid'); if(!g) return; if(!e){ g.innerHTML=''; return; }
+  const eqs=a=>(a||[]).map(x=>`<div class="eq">${x}</div>`).join('');
+  g.innerHTML=`<div class="card exc aim"><h3><span class="chip">目的</span>何のために使うか・期待できること</h3><ul>${e.aim.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+    <div class="card exc phys"><h3><span class="chip">物理</span>事故で起きること</h3><p>${e.phys.t}</p>${eqs(e.phys.eq)}</div>
+    <div class="card exc judge"><h3><span class="chip">判定</span>継電器が見て決めること</h3><p>${e.judge.t}</p>${eqs(e.judge.eq)}</div>
+    <div class="card exc after wide"><h3><span class="chip">戻る</span>動作のあと、物理側が戻るまで</h3><p>${e.after.t}</p><div class="ruler">${xRuler(e.after.tl)}</div>
+      <p class="rl-legend"><span class="rl-k ev">事故</span><span class="rl-k relay">継電器が動作</span><span class="rl-k cb">遮断器が開く</span><span class="rl-k back">物理量が戻る</span><span class="rl-k rest">送電・復旧</span>横軸は対数。時間は目安で、事故の種類・電圧階級・事業者・設備で違う。</p></div>`; }
+paintExplain();
+
+/* ===== 12 種を見比べる：判定の原理でグループに分け、事故中の結線図を並べる ===== */
+const XGROUPS=[
+  {t:'大きさで判定する', s:'測った量が整定値を超えたら（UVR は下回ったら）、決めた時間のあとに動く。いちばん基本の考え方。', eq:'|'+xv('x')+'| ≥ '+xv('x')+'<sub>set</sub> が '+xv('t')+'<sub>set</sub> 続く', ids:['ocr','ocgr','ovr','ovgr','uvr']},
+  {t:'向きで判定する', s:'電圧を基準に、電流や電力がどちら向きに流れているかを見る。大きさだけでは区別できない事故の場所を見分ける。', eq:'cos('+xv('θ')+' − '+xv('θ')+'<sub>m</sub>) > 0', ids:['dsr','dgr','rpr']},
+  {t:'差で判定する', s:'保護区間に入る電流と出る電流を比べる。区間の中の事故だけを、時間差なしで切れる。', eq:'|'+xv('I')+'<sub>1</sub> − '+xv('I')+'<sub>2</sub>| ≥ '+xv('k')+' · '+xv('I')+'<sub>r</sub>', ids:['dfr','rdfr']},
+  {t:'インピーダンスで判定する', s:'電圧 ÷ 電流で、事故点までの距離を測る。電源の強さが変わっても、届く範囲がほぼ一定。', eq:xv('Z')+' = '+xv('V')+' / '+xv('I')+' ≤ '+xv('Z')+'<sub>set</sub>', ids:['dr']},
+  {t:'周波数で判定する', s:'系統全体の発電と需要のつり合いを、周波数のずれで見る。', eq:xv('f')+' ≤ '+xv('f')+'<sub>set</sub>（UFR）', ids:['fr']},
+];
+/* 事故中（タイマが進んでいるところ）の結線図を、別の状態で計算して描き写す。いまの画面の状態は元に戻す */
+function snapScene(r, cv){ const keep={R,P,S,acc:G.acc,maxTe,had:done.has(r.id)}; const pr=(r.presets||[]).find(p=>p.k==='ok');
+  R=r; P={...DEF[r.id], ...(pr?pr.p:{})}; S=newState(); G.acc={}; silent=true;
+  try{ for(let i=0;i<160;i++) step(DT); S.ev=true; S.te=0; let n=0; while(!S.pick && !S.tripped && n<1200){ step(DT); n++; }
+    const k=Math.min(40, Math.floor(Math.max(0,remT())*0.5/DT)); for(let i=0;i<k && !S.tripped;i++) step(DT);
+    G.dt=0; G.t=S.t; sceneC.clearRect(0,0,720,360); R.scene(S,P); cv.getContext('2d').drawImage(sceneC.canvas,0,0,cv.width,cv.height); }
+  finally{ R=keep.R; P=keep.P; S=keep.S; G.acc=keep.acc; maxTe=keep.maxTe; silent=false; if(!keep.had) done.delete(r.id); } }
+let allBuilt=false;
+function buildAll(){ if(allBuilt) return; allBuilt=true;
+  $('allgroups').innerHTML=XGROUPS.map(g=>`<section class="xg"><div class="xgh"><h2>${g.t}</h2><div class="eq xeq">${g.eq}</div></div><p class="xs">${g.s}</p>
+    <div class="xcards">${g.ids.map(id=>{ const r=RELAYS.find(x=>x.id===id), o=EXPL[id].one;
+      return `<button class="xcard" data-id="${id}"><canvas width="720" height="360" aria-hidden="true"></canvas><span class="xn"><span class="mono">${r.no}</span> ${r.name}（${r.ab}）</span>
+        <span class="xdl"><span>見るもの</span><span>${o.see}</span><span>判定</span><span>${o.judge}</span><span>目的</span><span>${o.aim}</span><span>戻るまで</span><span>${o.back}</span></span></button>`; }).join('')}</div></section>`).join('');
+  $('allgroups').querySelectorAll('.xcard').forEach(b=>{ snapScene(RELAYS.find(x=>x.id===b.dataset.id), b.querySelector('canvas')); }); }
+$('allgroups').addEventListener('click',e=>{ const b=e.target.closest('.xcard'); if(!b) return; setView('relay'); selectRelay(b.dataset.id); autoFire=0.6; window.scrollTo({top:0,behavior:'smooth'}); });
 </script>
 
 <script>
@@ -1804,10 +2014,12 @@ function sldFrame(rd){ let dt=0;
   if(sHold>0) sHold=Math.max(0,sHold-rd); else if(!sPaused){ sAcc+=rd*sSpeed; while(sAcc>=DT){ const n0=SS.log.length; sStep(DT); sAcc-=DT; dt+=DT; const L=SS.log[SS.log.length-1];
       if(SS.log.length>n0 && OPT.beat && L && /trip|cb|bad/.test(L.cls)){ sHold=BEAT; sAcc=0; break; } } }
   G.dt=dt; G.t=SS.t; drawSld(); drawTcc(); }
-function setView(v){ VIEW=v; $('viewRelay').hidden=v!=='relay'; $('viewSld').hidden=v!=='sld'; $('tabRelay').setAttribute('aria-selected',v==='relay'); $('tabSld').setAttribute('aria-selected',v==='sld');
-  if(v==='sld' && !SS){ sBuild(); sReset(); sSync(); } try{ history.replaceState(null,'', v==='sld'?'#sld':'#'+R.id); }catch(e){} }
-$('tabRelay').addEventListener('click',()=>setView('relay')); $('tabSld').addEventListener('click',()=>{ stopTour(); setView('sld'); });
-if(h0==='sld') setView('sld');
+function setView(v){ VIEW=v; $('viewRelay').hidden=v!=='relay'; $('viewSld').hidden=v!=='sld'; $('viewAll').hidden=v!=='all';
+  $('tabRelay').setAttribute('aria-selected',v==='relay'); $('tabSld').setAttribute('aria-selected',v==='sld'); $('tabAll').setAttribute('aria-selected',v==='all');
+  if(v==='sld' && !SS){ sBuild(); sReset(); sSync(); } if(v==='all') buildAll();
+  try{ history.replaceState(null,'', v==='sld'?'#sld':v==='all'?'#all':'#'+R.id); }catch(e){} }
+$('tabRelay').addEventListener('click',()=>setView('relay')); $('tabAll').addEventListener('click',()=>{ stopTour(); setView('all'); }); $('tabSld').addEventListener('click',()=>{ stopTour(); setView('sld'); });
+if(h0==='sld') setView('sld'); if(h0==='all') setView('all');
 </script>
 
 </html>
