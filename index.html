@@ -3440,7 +3440,7 @@ paintExplain();
       <p><b>主保護と後備</b>：区間の中の事故は、その区間の主保護が最初に切る。主保護や遮断器が働かないときだけ、電源側の装置が時限をおいて切る（後備）。後備が切ると停電の範囲は広くなる。</p>
       <p class="key"><b>差動は時限がいらない</b>：87L と T87 は区間の入口と出口の電流を比べるので、区間の外の事故では動かない。だから区間の中ならどこでも瞬時に切れる。過電流（51）や距離（44）は区間の外の事故も見えてしまうので、動作時間の差（右の図の階段）で順番を決める。</p>
       <p><b>右の図の読み方</b>：横軸が事故の場所、縦軸が動作時間（対数）。場所ごとに<b>いちばん下の線が、正動作なら最初に動く装置（主保護）</b>で、その上の線が後備。線が途中で切れているところは、整定に届かず検出できない範囲。整定を変えると階段が動く。</p>
-      <p><b>太陽光（INV）と単独運転</b>：「太陽光」を「あり」にすると、配電線 F1 の末端に INV（逆変換装置）がつながる。INV の事故電流は定格の 1.1 倍ほどで小さく、端子電圧が 20 % 未満になるとゲートブロックで電流を止める。系統から切り離されても運転を続けると、停電したはずの線路を充電したままになる（単独運転）。INV は再閉路より前に解列しなければならない一方、ほかの配電線の事故では解列してはいけない（事故時運転継続、FRT）。出力と負荷がつり合うと電圧も位相もほとんど変わらないので、能動的方式（INV が無効電力などをわずかに揺さぶり、単独運転なら周波数が動くことで見つける）が要る。変電所の線路無電圧確認装置は、線路に電圧が残っていれば再閉路しない。</p></div>
+      <p><b>太陽光（INV）と単独運転</b>：「太陽光」を「あり」にすると、配電線 F1 の末端に INV（逆変換装置）がつながる。INV の事故電流は定格の 1.1 倍ほどで小さく、端子電圧が 20 % 未満になるとゲートブロックで電流を止める。系統から切り離されても運転を続けると、停電したはずの線路を充電したままになる（単独運転）。INV は再閉路より前に解列しなければならない一方、ほかの配電線の事故では解列してはいけない（事故時運転継続、FRT）。有効電力が合えば電圧はほとんど変わらず、無効電力が合えば位相もほとんど跳ばない。両方がつり合うと電圧・周波数の継電器や受動的方式では見えない（不感帯）。そこで能動的方式（INV が無効電力などをわずかに揺さぶり、単独運転なら周波数が動くことで見つける）や、変電所の遮断器が開いた信号を通信で送る転送遮断を組む。変電所の線路無電圧確認装置は、線路に電圧が残っていれば再閉路を待たせる。</p></div>
     <div class="card"><h3>計算の前提</h3><dl class="dl">
       <dt>短絡電流</dt><dd>%Z 法 <small>基準 10 MVA。上位系統 0.05+j0.5 %（短絡容量 2,000 MVA）、66 kV 送電線 20 km 0.55+j1.84 %、変圧器 66/6.6 kV・20 MVA・%Z 7.5 %（基準換算 j3.75 %）、6.6 kV 配電線 1 km あたり 4.6+j8.7 %（F1 4 km、F2 3 km）、負荷 F1 4 MW・F2 3 MW</small></dd>
       <dt>66 kV の地絡</dt><dd>抵抗接地 <small>上位変電所の中性点抵抗で約 300 A に制限。変圧器は Y−Δ としたので、6.6 kV 側に零相電圧は出ない</small></dd>
@@ -3448,8 +3448,8 @@ paintExplain();
       <dt>送電線</dt><dd>87L・44S・67G <small>87L は差電流 100 A 以上かつ通過電流の 30 % 以上で 0.03 s。44S は第 1 段が線路の 85 %（0.03 s）、第 2 段 150 %（0.4 s）、第 3 段は変圧器と 6.6 kV 母線まで（2.0 s）。67G 0.5 s</small></dd>
       <dt>変圧器</dt><dd>T87・96・TP51・TS51 <small>T87 は定格の 30 % 以上かつ比率 30 % 以上で 0.03 s（CT とタップの誤差 5 %、第 2 高調波 15 % 以上で抑制）。96 は内部の大きな事故 0.15 s、層間短絡 0.4 s。TP51 は 260 A・NI・レバー 4、瞬時 1,800 A（66 kV 側）。TS51 は 2,400 A・NI</small></dd>
       <dt>配電線</dt><dd>F51・F67G・64B <small>F51 600 A・NI。F67G は V0 5 %・I0 0.2 A・前方で 0.9 s。64B は V0 15 % で 2.0 s</small></dd>
-      <dt>時間</dt><dd>開極と再閉路 <small>遮断器が開くまで 66 kV と変圧器 0.05 s、配電線 0.07 s。再閉路は送電線と配電線で 1 回だけ（実際は数秒〜1 分後。画面では 2 s に縮めた）。変圧器と母線の事故では再閉路しない。継電器は瞬時復帰</small></dd>
-      <dt>太陽光（INV）</dt><dd>F1 の末端 <small>力率 1・出力一定で、電流は定格の 1.1 倍まで。端子電圧 20 % 未満でゲートブロック。連系保護は UVR 80 %・OVR 110 %（1.0 s）、OFR・UFR 61.8 Hz・57.0 Hz（1.0 s）、OVGR V0 10 %（0.5 s）。受動的方式は位相の跳躍 8° 以上で 0.1 s、跳躍は 30°×|1 − 出力／負荷| と仮定。能動的方式は、単独運転なら周波数が 1.5 Hz/s で動くとして 0.6 Hz で検出（約 0.5 s）。負荷は力率 1 なので、無効電力の不つり合いによる周波数の変化は扱わない。整定は代表例</small></dd>
+      <dt>時間</dt><dd>開極と再閉路 <small>遮断器が開くまで 66 kV と変圧器 0.05 s、配電線 0.07 s。再閉路は送電線と配電線で 1 回だけ、約 1 分後（低速度再閉路の例。上位の送電線では 1 s 程度の高速度再閉路もある）。待つあいだに何も変わらなければ早送りする。変圧器と母線の事故では再閉路しない。継電器は瞬時復帰。一時的な事故のアークは、系統からの事故電流が止まると消えるとした（INV の小さな電流での再点弧は扱わない）</small></dd>
+      <dt>太陽光（INV）</dt><dd>F1 の末端 <small>力率 1 で出力一定、定格出力で運転（出力＝定格容量）、電流は定格の 1.1 倍まで。端子電圧が 20 % 未満になると電流を止め（ゲートブロック）、無電圧から自立して起動しない（境界と復帰条件は機種を模した仮定）。島の電圧は損失を無視すると √(出力／負荷)、電流制限にかかると 1.1×出力／負荷。周波数の動きは計算していない（60 Hz のまま）。単独運転になった瞬間の位相の跳躍は、INV が力率 1 なので負荷の力率角（θ = arccos 力率）とした（潮流計算では負荷を力率 1 として扱い、無効電力は跳躍の見積もりだけに使う）。連系保護は教材用の仮の整定：UVR 80 %・OVR 110 %（1.0 s）、OFR・UFR 61.8 Hz・57.0 Hz（1.0 s）、OVGR V0 10 %（完全地絡で 100 %、0.5 s）、受動的方式は跳躍 8° 以上で 0.1 s、能動的方式は単独運転なら周波数が 1.5 Hz/s で動くという人工的な仮定のもとで 0.6 Hz で検出、転送遮断は信号の遅れ 0.1 s。検出時間は、これらの仮定から決まる値で、方式の性能そのものではない。52P が開くまでさらに 0.05 s。線路無電圧確認装置は、線路の電圧 30 % 未満が 0.5 s 続けば投入し、10 s 待っても無電圧にならなければロックアウト（仮定）</small></dd>
     </dl></div>
   </section>
 </section>
@@ -3535,9 +3535,10 @@ const WROWS=[
   {id:'i64', name:'INV：OVGR（地絡過電圧）', inv:1},
   {id:'ipas', name:'INV：単独運転検出（受動的）', inv:1},
   {id:'iact', name:'INV：単独運転検出（能動的）', inv:1},
+  {id:'itt', name:'INV：転送遮断（変電所から）', inv:1},
 ];
 const wNm = id => id==='inv' ? '太陽光（INV）の連系保護' : WROWS.find(r=>r.id===id).name;
-const WTRIP={l87:['52L','52T1'], z44:['52L'], g67:['52L'], t87:['52T1','52T2'], b96:['52T1','52T2'], tp51:['52T1','52T2'], ts51:['52T2'], b64:['52T2'], f1oc:['52F1'], f1dg:['52F1'], f2oc:['52F2'], f2dg:['52F2'], i27:['52P'], i59:['52P'], i95:['52P'], i64:['52P'], ipas:['52P'], iact:['52P']};
+const WTRIP={l87:['52L','52T1'], z44:['52L'], g67:['52L'], t87:['52T1','52T2'], b96:['52T1','52T2'], tp51:['52T1','52T2'], ts51:['52T2'], b64:['52T2'], f1oc:['52F1'], f1dg:['52F1'], f2oc:['52F2'], f2dg:['52F2'], i27:['52P'], i59:['52P'], i95:['52P'], i64:['52P'], ipas:['52P'], iact:['52P'], itt:['52P']};
 const WCB={'52L':{brk:0.05, nm:'52L（送電線）'}, '52T1':{brk:0.05, nm:'52T1（変圧器の一次）'}, '52T2':{brk:0.05, nm:'52T2（変圧器の二次）'}, '52F1':{brk:0.07, nm:'52F1（配電線 F1）'}, '52F2':{brk:0.07, nm:'52F2（配電線 F2）'}, '52P':{brk:0.05, nm:'52P（太陽光の連系用）'}};
 /* 再閉路するまとまり：送電線の継電器が開けた遮断器と、配電線の遮断器。変圧器と母線の事故では再閉路しない */
 const WRC={L:{rel:['l87','z44','g67'], cbs:['52L','52T1'], nm:'送電線'}, F1:{rel:['f1oc','f1dg'], cbs:['52F1'], nm:'配電線 F1'}, F2:{rel:['f2oc','f2dg'], cbs:['52F2'], nm:'配電線 F2'}};
@@ -3546,7 +3547,8 @@ const W87={min:100, k:0.3}, WZR={z1:0.85*cabs(WZ.ln), z2:1.5*cabs(WZ.ln), z3:1.2
 const WT87={min:0.6, k:0.3, err:0.05, h2:0.15};   /* pu（基準 10 MVA）。定格 20 MVA は 2 pu なので、その 30 % */
 const WTP={tap:260, lever:4, inst:1800}, WTS={tap:2400}, WF={tap:600};
 const WGF={ig66:300, v0f:5, i0f:0.2, tf:0.9, v0b:15, tb:2.0, t67:0.5, icF1:3.0, icF2:4.0, icB:0.5, ir:0.4, E:6600/Math.sqrt(3)};
-const WINR={pk:16, tau:0.4, h2:0.30, close2:1.0};   /* 励磁突入：一次側で定格の 8 倍（16 pu）から時定数 0.4 s で減る。第 2 高調波 30 % */
+const WINR={pk:16, tau:0.4, h2:0.30, close2:1.0};
+const WREC=60, WLDC={dead:0.3, conf:0.5, wait:10};   /* 再閉路は約 1 分後。線路無電圧確認：30 % 未満が 0.5 s 続けば投入、最大 10 s 待つ（仮定） */   /* 励磁突入：一次側で定格の 8 倍（16 pu）から時定数 0.4 s で減る。第 2 高調波 30 % */
 
 /* 事故の状態（地絡・層間短絡・励磁突入）。te は事故からの時刻、ener は電気が来ている節点 */
 function wFaultX(open, on, te, Q, ener){ const f=WFP[Q.loc], X={}; ener=ener||wEnergized(open,f.pos,Q.inv==='on');
@@ -3596,19 +3598,20 @@ function wMeasure(r, X, Q){ const I=r.I, z=Cx(0,0), A66=v=>cabs(v)*WI66, A6=v=>c
   M.i95={v:irun?`${fq.toFixed(2)} Hz`:'—', set:'57.0〜61.8 Hz', els:[{k:'',on:irun && (fq>61.8||fq<57.0), t:1.0}]};
   M.i64={v:irun?`V0 ${(iv.V0||0).toFixed(0)} %`:'—', set:'V0 10 %', off:Q.ipro==='pasng'?'付けていない':'', els:[{k:'',on:irun && Q.ipro!=='pasng' && (iv.V0||0)>=10, t:0.5}]};
   M.ipas={v:irun&&iv.isl?`跳躍 ${iv.th.toFixed(0)}°`:'—', set:'8°', els:[{k:'',on:irun && !!iv.isl && !iv.gb && iv.th>=8, t:0.1}]};
+  M.itt={v:Q.tt==='on'?(irun&&iv.isl?'開放の信号':'—'):'—', set:'', off:Q.tt==='on'?'':'付けていない', els:[{k:'',on:irun && Q.tt==='on' && !!iv.isl, t:0.1}]};
   M.iact={v:irun&&iv.isl?`Δf ${iv.df.toFixed(2)} Hz`:'—', set:'0.6 Hz', off:Q.ipro==='full'?'':'付けていない', els:[{k:'',on:irun && Q.ipro==='full' && !!iv.isl && Math.abs(iv.df||0)>=0.6, t:0.1}]};
   return M; }
 
 /* ===== シミュレーション（5 ms 刻み） ===== */
-const WQ0={loc:'Ln', kind:'3p', pers:'tmp', fail:'none', h2:true, fl:2, tsl:3, rg:0, inv:'off', ppv:4, ipro:'full', ldc:true};
+const WQ0={loc:'Ln', kind:'3p', pers:'tmp', fail:'none', h2:true, fl:2, tsl:3, rg:0, inv:'off', ppv:4, ipro:'full', ldc:true, qpf:'1', tt:'off'};
 let WQ={...WQ0}, WS=null, wFull=[], wFocus=null, wPaused=false, wHold=0, wAcc=0, wSpeed=0.2, wRoles={};
 const WPOS={'52L':[150,96], '52T1':[740,150], '52T2':[740,318], '52F1':[420,398], '52F2':[640,398], '52P':[70,496], inv:[150,462],
   l87:[58,158], z44:[126,158], g67:[194,158], tp51:[820,150], t87:[820,196], b96:[820,242], ts51:[820,296], b64:[330,446], f1oc:[510,398], f1dg:[510,442], f2oc:[730,398], f2dg:[730,442]};
 WROWS.forEach(r=>{ if(r.inv) WPOS[r.id]=WPOS.inv; });
 /* 単独運転にかかわる危険（数が大きいほど重い） */
-const WHZR={isl:1, ldc:2, ns:3}, WHZT={isl:'太陽光（INV）が単独運転を続けている。停電したはずの配電線が充電されたまま（作業者の感電や、再閉路での非同期投入のおそれ）。',
-  ldc:'再閉路のときに INV がまだ運転していた。線路無電圧確認装置が再閉路を止めたので非同期投入は避けたが、配電線 F1 の停電が長引く。',
-  ns:'INV が運転したまま再閉路した（非同期投入）。位相のずれた電源どうしがつながり、機器を傷めるおそれがある。'};
+const WHZR={isl:1, ldc:2, ns:3}, WHZT={isl:'単独運転を誰も検出できず、停電したはずの配電線が充電されたまま（作業者の感電や、再閉路での非同期投入のおそれ）。',
+  ldc:'再閉路のときに INV がまだ運転していた。線路無電圧確認装置が投入を待たせ、最後はロックアウトしたので非同期投入は避けたが、配電線 F1 の停電が長引く。',
+  ns:'同期を確かめないまま、INV が充電している線路に再閉路した（非同期投入のおそれ）。位相差によっては大きな電流が流れ、機器を傷める。'};
 function wHz(k){ if(!WS.hz || WHZR[k]>WHZR[WS.hz]) WS.hz=k; }
 function wNew(){ const d={}; WROWS.forEach(r=>d[r.id]={prog:0,pick:false,tripped:false,tTrip:null,tOpen:null,el:{},elem:null,top:null,v:'',status:'待機'});
   return {t:0, ev:false, te:0, on:false, open:{}, opening:{}, by:{}, dev:d, rc:{}, log:[], trips:[], ever:new Set(), r:null, X:{}, M:null, invRun:false, isl:null, hz:null, vinv:null, gb:false}; }
@@ -3622,34 +3625,38 @@ function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.
     wLog(`${WCB[cb].nm} が開いた`,'cb',WPOS[cb]);
     Object.values(WRC).forEach(rc=>{ if(rc.cbs[0]!==cb || !rc.rel.includes(o.who)) return; const st=S_.rc[rc.nm]=S_.rc[rc.nm]||{n:0};
       if(st.n>=1){ st.lock=true; wLog(`${rc.nm}は再閉路しても事故が残っていた → ロックアウト（長時間の停電）`,'bad',WPOS[cb]); } else st.t=S_.t; }); });
-  /* 再閉路（1 回だけ）。INV が単独運転で線路を充電していたら、線路無電圧確認装置が止める（なければ非同期投入） */
-  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(!st || st.t==null || st.n>0 || S_.t-st.t<RECLOSE) return;
+  /* 再閉路（1 回だけ、約 1 分後）。配電線 F1 は線路無電圧確認装置があれば、線路の無電圧を確かめてから入れる */
+  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(!st || st.t==null || st.n>0 || S_.t-st.t<WREC) return;
+    const chk = Q.ldc && rc.nm==='配電線 F1';
+    if(chk && S_.t-(S_.f1Live??-1e9) < WLDC.conf){
+      if(st.w==null){ st.w=S_.t; wLog('線路無電圧確認装置：配電線 F1 に電圧がある（INV の単独運転）ので、投入の条件が成り立たない。無電圧になるのを待つ','reset',WPOS['52F1']); }
+      if(S_.t-st.w>=WLDC.wait){ st.t=null; st.lock=true; wHz('ldc'); wLog(`線路無電圧確認装置：${WLDC.wait} s 待っても電圧が消えない → 再閉路をやめてロックアウト。F1 の停電が長引く`,'bad',WPOS['52F1']); }
+      return; }
     const cbs=rc.cbs.filter(cb=>S_.open[cb] && rc.rel.includes(S_.by[cb])), ivLive=!!S_.isl && !S_.gb && S_.invRun && !S_.open['52P'], ivn=ivLive?wIsland(S_.open,f.pos,'E1'):null;
     const hit = ivLive && cbs.some(cb=>{ const e=wEdges(f.pos).find(x=>x.cb===cb); return ivn.has(e.a)||ivn.has(e.b); });
-    if(hit && rc.nm==='配電線 F1' && Q.ldc){ st.t=null; st.lock=true; wHz('ldc'); wLog('線路無電圧確認装置：配電線 F1 に電圧が残っている（INV の単独運転）ので、再閉路しない。F1 の停電が長引く','bad',WPOS['52F1']); return; }
     cbs.forEach(cb=>{ S_.open[cb]=false; }); st.n=1; st.t=null; st.tRe=S_.t;
-    wLog(`${rc.nm}を再閉路${Q.inv==='on'&&Q.ldc&&rc.nm==='配電線 F1'?'（線路が無電圧であることを確かめてから）':''}（実際は数秒〜1 分後。ここでは ${RECLOSE} s に縮めた）`,'cb',WPOS[rc.cbs[0]]);
-    if(hit){ wHz('ns'); wLog('INV が運転したまま再閉路した（非同期投入）。位相のずれた電源どうしがつながり、大きな電流が流れる','bad',WPOS.inv); S_.open['52P']=true; S_.invRun=false; wLog('INV が過電流で止まり、52P が開いた','cb',WPOS['52P']); }
+    wLog(`${rc.nm}を再閉路${chk&&Q.inv==='on'?'（線路の無電圧を確かめてから）':''}（約 1 分後）`,'cb',WPOS[rc.cbs[0]]);
+    if(hit){ wHz('ns'); wLog('同期を確かめないまま、INV が充電している線路に投入した（非同期投入のおそれ。位相差によっては大きな電流が流れ、機器を傷める。この過渡はここでは計算しない）','bad',WPOS.inv); }
     rc.rel.forEach(id=>Object.assign(D[id],{tripped:false,prog:0,el:{},pick:false,status:'待機',tTrip:null,tOpen:null})); });
   /* 励磁突入のシナリオ：突入電流が収まったら二次側を入れる */
   if(S_.ev && Q.kind==='inrush' && !S_.closed2 && S_.te>=WINR.close2){ S_.closed2=true; if(!S_.open['52T1']){ S_.open['52T2']=false; wLog('突入電流が収まったので 52T2 を入れて送電を始めた','cb',WPOS['52T2']); } }
   /* 潮流と事故電流（INV があれば E1 に電流を注入する） */
   const run=S_.invRun && !S_.open['52P'], r=wSolveP(S_.open, S_.on && Q.kind==='3p' ? f.node : null, f.pos, P, run, S_.vinv, S_.gb);
-  if(S_.ev && run && !!r.gb!==S_.gb) wLog(r.gb?'INV：端子電圧が 20 % 未満になったので、出力を一時停止（ゲートブロック）':'INV：電圧が戻ったので出力を再開（運転継続、FRT）','reset',WPOS.inv);
+  if(S_.ev && run && !!r.gb!==S_.gb) wLog(r.gb?'INV：端子電圧が 20 % 未満になったので電流を止めた（ゲートブロック）。無電圧から自立して起動はしない':'INV：系統の電圧が戻ったので電流を再開した','reset',WPOS.inv);
   S_.vinv=r.Vi; S_.gb=!!r.gb;
   const ener=wEnergized(S_.open, f.pos, run && !r.gb);
-  /* 一時的な事故（送電線・配電線）は、事故点に電気が来なくなるとアークが消える */
-  if(S_.on && Q.pers==='tmp' && f.tmp && (Q.kind==='3p'||Q.kind==='lg') && !ener.all.has(f.node)){ S_.on=false; wLog('事故点が無電圧になってアークが消えた（一時的な事故）','reset',[f.x,f.y]); }
+  if(cabs(r.V.N1||Cx(0))>=WLDC.dead) S_.f1Live=S_.t;
+  /* 一時的な事故（送電線・配電線）は、系統からの事故電流が止まるとアークが消える（教材の仮定） */
+  if(S_.on && Q.pers==='tmp' && f.tmp && (Q.kind==='3p'||Q.kind==='lg') && !ener.g.has(f.node)){ S_.on=false; wLog('系統からの事故電流が止まり、アークが消えた（一時的な事故）','reset',[f.x,f.y]); }
   const X=wFaultX(S_.open, S_.on, S_.te, Q, ener); wAddInr(r,X);
-  /* INV の単独運転：系統から切り離されても運転を続けている */
+  /* INV の単独運転：系統から切り離されても運転を続けている。位相の跳躍は負荷の力率角（INV は力率 1） */
   const isl = run && !ener.g.has('E1');
-  if(isl && !S_.isl){ const nd=wIsland(S_.open,f.pos,'E1'), Pl=(nd.has('E1')?0.4:0)+(nd.has('E2')?0.3:0), rr=Pl>0?P/Pl:9, th=Math.min(90,30*Math.abs(1-rr));
-    S_.isl={t0:S_.te, r:rr, th, Pl};
-    if(S_.ev && !r.gb) wLog(`系統から切り離された。INV だけで${nd.has('E2')?'6.6 kV 母線と配電線 F1・F2':'配電線 F1'}をつないでいる（単独運転。出力 ${Q.ppv} MW ／ 負荷 ${(Pl*10).toFixed(0)} MW、位相の跳躍 ${th.toFixed(0)}°）`,'pick',WPOS.inv); }
+  if(isl && !S_.isl){ const nd=wIsland(S_.open,f.pos,'E1'), Pl=(nd.has('E1')?0.4:0)+(nd.has('E2')?0.3:0), pf=Math.min(1,+Q.qpf||1), th=Math.acos(pf)*180/Math.PI;
+    S_.isl={t0:S_.te, r:Pl>0?P/Pl:9, th, Pl};
+    if(S_.ev && !r.gb) wLog(`系統から切り離されたが、INV が運転を続けて${nd.has('E2')?'6.6 kV 母線と配電線 F1・F2':'配電線 F1'}を充電している（単独運転。停電したはずの線路に電気が来ていて危険）。出力 ${Q.ppv} MW ／ 負荷 ${(Pl*10).toFixed(0)} MW、負荷の力率 ${pf.toFixed(2)} → 位相の跳躍 ${th.toFixed(0)}°`,'bad',WPOS.inv); }
   if(!isl) S_.isl=null;
   const df = isl && !r.gb && Q.ipro==='full' ? 1.5*(S_.te-S_.isl.t0) : 0;
   X.inv={run, V:run?cabs(r.V.E1):0, f:60+df, df, isl, th:isl?S_.isl.th:0, gb:!!r.gb, V0:X.V0i||0};
-  if(S_.ev && isl && !r.gb && S_.te-S_.isl.t0>1.5 && !S_.hzIsl){ S_.hzIsl=true; wHz('isl'); wLog('単独運転が 1.5 s 続いている。停電したはずの配電線が INV で充電されたまま','bad',WPOS.inv); }
   const M=wMeasure(r,X,Q); S_.r=r; S_.X=X; S_.M=M;
   if(S_.ev && M.t87.blk && !S_.blkLog){ S_.blkLog=true; wLog(`T87 の差電流は大きいが、第 2 高調波が ${(X.inr.h2*100).toFixed(0)} %（15 % 以上）なので励磁突入と見て止める`,'reset',WPOS.t87); }
   /* 要素ごとにタイマを進め、どれかが満了したら動作（OR）。復帰は瞬時 */
@@ -3660,7 +3667,14 @@ function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=WFP[Q.loc], P=Q.inv==='on'?Q.
       if(best.p>=1){ d.tripped=true; d.tTrip=S_.te; d.status='動作'; S_.trips.push({id,te:S_.te}); if(id[0]==='i' && !S_.trips.some(t=>t.id==='inv')) S_.trips.push({id:'inv',te:S_.te});
         wLog(`${wNm(id)} が動作（${best.k?best.k+'、':''}${S_.te.toFixed(3)} s）`,'trip',WPOS[id]); WTRIP[id].forEach(cb=>wOpen(cb,id)); } }
     else if(d.pick){ d.pick=false; d.prog=0; d.status='復帰'; wLog(`${wNm(id)} は復帰`,'reset',WPOS[id]); } });
-  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.tRe!=null && !st.ok && !st.lock && S_.t-st.tRe>0.4 && !rc.rel.some(id=>D[id].pick)){ st.ok=true; wLog(`${rc.nm}の再閉路に成功して復電した`,'cb',WPOS[rc.cbs[0]]); } }); }
+  const busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped);
+  /* 単独運転を誰も検出していない（能動的方式の時間も過ぎた） */
+  if(S_.ev && isl && !r.gb && !S_.hzIsl && !busy && !Object.values(S_.opening).some(Boolean) && S_.te-S_.isl.t0>1.0){ S_.hzIsl=true; wHz('isl'); wLog('単独運転を誰も検出していない（不感帯）。停電したはずの配電線が充電されたまま','bad',WPOS.inv); }
+  Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.tRe!=null && !st.ok && !st.lock && S_.t-st.tRe>0.4 && !rc.rel.some(id=>D[id].pick)){ st.ok=true; wLog(`${rc.nm}の再閉路に成功して復電した`,'cb',WPOS[rc.cbs[0]]); } });
+  /* 再閉路を待つあいだ、何も変わらなければ早送りする（待ち時間は実時間のまま） */
+  if(S_.ev){ const nx=[]; Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.t!=null && st.n===0) nx.push(st.w!=null ? st.w+WLDC.wait : st.t+WREC); });
+    const calm = !busy && !Object.values(S_.opening).some(Boolean) && !(isl && !r.gb && !S_.hzIsl) && !(Q.kind==='inrush' && !S_.closed2);
+    if(nx.length && calm){ const tn=Math.min(...nx)-dt; if(tn>S_.t+0.05){ const j=tn-S_.t; S_.t+=j; S_.te+=j; if(cabs(r.V.N1||Cx(0))>=WLDC.dead) S_.f1Live=S_.t;   /* 早送りのあいだも線路の状態は変わらない */ wLog(`（何も変わらないので ${j.toFixed(1)} s 早送り）`,'reset',null); } } } }
 function wReset(keep){ WS=wNew(); if(WQ.kind==='inrush'){ WS.open['52T1']=true; WS.open['52T2']=true; } WS.invRun = WQ.inv==='on' && wIsland(WS.open,null,'S').has('E1');
   for(let i=0;i<20;i++) wStep(DT); WS.log=[]; wHold=0; wFocus=null; if(!keep) wFull=[]; }
 function wFire(){ if(WS.ev) wReset(); const Q=WQ, f=WFP[Q.loc]; WS.ev=true; WS.te=0; WS.on=true;
@@ -3700,7 +3714,7 @@ function wExpect0(){ const L=WQ.loc, k=WQ.kind, E={main:[],sub:[],back:[],no:[],
   return Object.assign(E,T); }
 function wExpTime(id){ const Q=WQ, f=WFP[Q.loc];
   if(id==='inv'){ const s=wInvSim(); if(s.t!=null) return `${WINVN[s.who]} → ${secStr(s.t)}${s.tIsl!=null&&s.tIsl<s.t?`（切り離されてから ${secStr(s.t-s.tIsl)}）`:''}`;
-    if(Q.loc==='Gn' && Q.kind==='3p') return `電圧は最低 ${(s.minV*100).toFixed(0)} % まで下がるが、UVR の時限（1.0 s）より早く戻るので運転を続ける`;
+    if(Q.loc==='Gn' && Q.kind==='3p') return `電圧は最低 ${(s.minV*100).toFixed(0)} % まで下がるが、UVR の時限（1.0 s）より早く戻るので UVR では解列しない`;
     return '検出できない（単独運転が続く）'; }
   const open=Q.kind==='inrush'?{'52T2':true}:{}; const r=wSolveP(open, Q.kind==='3p'?f.node:null, f.pos, Q.inv==='on'?Q.ppv/10:0, Q.inv==='on'&&Q.kind!=='inrush', null, false), X=wFaultX(open,true,0,Q); wAddInr(r,X);
   const m=wMeasure(r,X,Q)[id]; if(m.off) return m.off; if(m.blk) return `${m.v}：第 2 高調波で抑制（動かない）`;
@@ -3710,12 +3724,12 @@ function wExpTime(id){ const Q=WQ, f=WFP[Q.loc];
 /* 太陽光（INV）があるときの期待を足す */
 function wExpect(){ const L=WQ.loc, k=WQ.kind, inv=WQ.inv==='on';
   if(k==='open') return inv ? {main:['inv'],sub:[],back:[],no:[], area:'配電線 F1（作業のため）',
-      why:'作業のために 52F1 を開くと、配電線 F1 は停電するはず。ところが太陽光（INV）が運転を続けると、F1 の負荷に電気を送り続ける（単独運転）。作業者の感電や、再閉路での非同期投入につながるので、INV は単独運転を見つけて止まらなければならない。出力と負荷がつり合うと、電圧も周波数もほとんど変わらず、電圧・周波数の継電器や受動的方式では見えない（不感帯）。能動的方式は、INV が無効電力などをわずかに揺さぶり、系統につながっていれば何も起きないが、単独運転なら周波数が動くことを使って見つける。'}
+      why:'作業のために 52F1 を開くと、配電線 F1 は停電するはず。ところが太陽光（INV）が運転を続けると、F1 の負荷に電気を送り続ける（単独運転）。その瞬間から作業者の感電や、再閉路での非同期投入の危険があるので、INV は単独運転を見つけて止まらなければならない。有効電力がつり合うと電圧はほとんど変わらず（UVR・OVR で見えない）、無効電力がつり合うと位相もほとんど跳ばない（受動的方式で見えない）。両方がつり合うと不感帯に入る。能動的方式は、INV が無効電力などをわずかに揺さぶり、系統につながっていれば系統が周波数を保つので変化が抑えられるが、単独運転なら周波数が動くことを使って見つける。転送遮断は、変電所の遮断器が開いた信号を通信で送るので不感帯に関係ないが、通信が切れると働かない。'}
     : {main:[],sub:[],back:[],no:[], area:'配電線 F1（作業のため）', why:'太陽光がなければ、52F1 を開けば F1 は停電する。保護継電器の出番はない。'};
   const E=wExpect0(); if(!inv || k==='inrush') return E;
-  if(L==='Gn'){ if(k==='3p'){ E.no=[...E.no,'inv']; E.why+=' 太陽光（INV）は F1 につながっているので、F2 の事故で解列してはいけない（事故時運転継続、FRT）。電圧が下がっても、UVR の時限（1.0 s）より早く事故が除かれれば運転を続ける。INV の電流は F1 の F51 を逆向きに流れるが、定格の 1.1 倍ほどなので整定に届かない。'; }
+  if(L==='Gn'){ if(k==='3p'){ E.no=[...E.no,'inv']; E.why+=' 太陽光（INV）は F1 につながっているので、F2 の事故で不必要に解列してはいけない。ここでは、電圧が下がっても UVR の時限（1.0 s）より早く事故が除かれるので UVR では解列しない、という時間協調の例を示す。FRT 要件（高圧・三相短絡）が運転継続を求めるのは残電圧 20 % 以上・0.3 s 以下の電圧低下で、この事故（約 0.6 s）はそれより長い。電圧低下中や回復時に受動的方式が不要に動かない工夫や、出力の回復は計算していない。INV の電流は F1 の F51 を逆向きに流れるが、定格の 1.1 倍ほどなので整定に届かない。'; }
     else E.why+=' INV の OVGR は V0 で動くので、ほかの配電線の地絡でも解列する（V0 だけでは、どの配電線の地絡か分からない）。'; return E; }
-  E.sub=[...(E.sub||[]),'inv']; E.why+=' 太陽光（INV）は、系統から切り離されたら再閉路（2 s 後）より前に解列しなければならない（単独運転の防止）。'; return E; }
+  E.sub=[...(E.sub||[]),'inv']; E.why+=' 太陽光（INV）は、系統から切り離されたら再閉路（約 1 分後）より前に解列しなければならない（単独運転の防止）。'; return E; }
 /* INV がどうやって解列するかは、同じ条件で裏で計算してみて決める */
 function wInvSim(){ const keep={WS,wFull,wFocus,wHold}, res={minV:9};
   try{ wFull=[]; wReset(); wFire(); let tIsl=null;
@@ -3723,7 +3737,7 @@ function wInvSim(){ const keep={WS,wFull,wFocus,wHold}, res={minV:9};
       const t=WS.trips.find(x=>x.id[0]==='i' && x.id!=='inv'); if(t){ res.t=t.te; res.who=t.id; break; } }
     res.tIsl=tIsl; } finally { WS=keep.WS; wFull=keep.wFull; wFocus=keep.wFocus; wHold=keep.wHold; }
   return res; }
-const WINVN={i27:'UVR（電圧低下）', i59:'OVR（電圧上昇）', i95:'OFR・UFR（周波数）', i64:'OVGR（V0）', ipas:'受動的方式（位相の跳躍）', iact:'能動的方式（周波数を揺さぶる）'};
+const WINVN={i27:'UVR（電圧低下）', i59:'OVR（電圧上昇）', i95:'OFR・UFR（周波数）', i64:'OVGR（V0）', ipas:'受動的方式（位相の跳躍）', iact:'能動的方式（周波数を揺さぶる）', itt:'転送遮断（通信）'};
 let wExpKey='', wExpCache=null;
 
 /* ===== 描画 ===== */
@@ -3890,28 +3904,28 @@ function wChartInrush(c){ const S_=WS, b={x:56,y:34,w:370,h:250}, X=t=>b.x+t/1.5
   H.text(c,b.x,b.y-16,'電流 [A]',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); H.text(c,b.x+b.w,b.y-16,'第 2 高調波の割合',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
   const y0=b.y+b.h+30; ['差電流は T87 の動作値の 20 倍以上。大きさだけでは内部事故と見分けられない','第 2 高調波が 15 % 以上なら励磁突入と見て T87 を止める（抑制）','TP51 の瞬時要素（1,800 A）は突入電流（最大 1,400 A）より上に整定してある','限時要素は電流がすぐ減るので満了しない'].forEach((s,i)=>H.text(c,20,y0+i*17,'・'+s,{al:'left',col:C.ink,font:`600 11px ${SANS}`})); }
 
-/* 単独運転の不感帯：出力÷負荷と島の電圧。電圧の継電器と受動的方式が見えない範囲が重なる */
-function wChartIsl(c){ const Q=WQ, S_=WS, b={x:56,y:40,w:390,h:220}, X=r=>b.x+clamp(r,0,2)/2*b.w, Y=v=>b.y+b.h-clamp(v,0,1.6)/1.6*b.h, Vr=r=>Math.min(Math.sqrt(r),1.1*r);
-  $('wctitle').textContent='単独運転の不感帯'; $('wcsub').textContent='出力と負荷がつり合うと見えない';
-  const r0=Q.inv==='on'?Q.ppv/4:0, thr=8/30;
-  c.save(); c.fillStyle=rgba(C.amber,0.16); c.fillRect(b.x,Y(1.1),b.w,Y(0.8)-Y(1.1)); c.fillStyle=rgba(C.s2,0.14); c.fillRect(X(1-thr),b.y,X(1+thr)-X(1-thr),b.h);
-  c.fillStyle=rgba(C.fault,0.18); c.fillRect(X(Math.max(1-thr,0.8/1.1)),Y(1.1),X(Math.min(1+thr,1.21))-X(Math.max(1-thr,0.8/1.1)),Y(0.8)-Y(1.1));
+/* 単独運転の不感帯：横軸は有効電力（出力÷負荷）、縦軸は無効電力（負荷の力率）。電圧の継電器と受動的方式が両方とも見えない範囲が不感帯 */
+function wChartIsl(c){ const Q=WQ, S_=WS, b={x:62,y:34,w:384,h:200}, X=r=>b.x+clamp(r,0,2)/2*b.w, Y=q=>b.y+b.h-clamp(q,0,0.6)/0.6*b.h, Vr=r=>Math.min(Math.sqrt(r),1.1*r), tq=pf=>Math.tan(Math.acos(pf));
+  $('wctitle').textContent='単独運転の不感帯'; $('wcsub').textContent='有効電力と無効電力がつり合うと見えない';
+  const r0=Q.inv==='on'?Q.ppv/4:0, pf=Math.min(1,+Q.qpf||1), q0=tq(pf), qt=Math.tan(8*Math.PI/180), xa=0.8/1.1, xb=1.21;
+  c.save(); c.fillStyle=rgba(C.amber,0.16); c.fillRect(X(xa),b.y,X(xb)-X(xa),b.h); c.fillStyle=rgba(C.s2,0.14); c.fillRect(b.x,Y(qt),b.w,Y(0)-Y(qt));
+  c.fillStyle=rgba(C.fault,0.24); c.fillRect(X(xa),Y(qt),X(xb)-X(xa),Y(0)-Y(qt));
   c.strokeStyle=rgba(C.muted,0.22); c.lineWidth=1; c.font=`500 10px ${MONO}`; c.fillStyle=C.muted;
   [0,0.5,1,1.5,2].forEach(r=>{ c.beginPath(); c.moveTo(X(r),b.y); c.lineTo(X(r),b.y+b.h); c.stroke(); c.textAlign='center'; c.textBaseline='top'; c.fillText(r.toFixed(1),X(r),b.y+b.h+5); });
-  [0,0.4,0.8,1.2,1.6].forEach(v=>{ c.beginPath(); c.moveTo(b.x,Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); c.textAlign='right'; c.textBaseline='middle'; c.fillText((v*100).toFixed(0)+' %',b.x-4,Y(v)); });
-  c.strokeStyle=C.ink; c.lineWidth=1.2; c.strokeRect(b.x,b.y,b.w,b.h);
-  c.strokeStyle=C.s1; c.lineWidth=2.4; c.beginPath(); for(let r=0.01;r<=2;r+=0.01){ r<0.02?c.moveTo(X(r),Y(Vr(r))):c.lineTo(X(r),Y(Vr(r))); } c.stroke();
-  [[0.8,'UVR 80 %'],[1.1,'OVR 110 %']].forEach(([v,l])=>{ c.strokeStyle=C.amber; c.setLineDash([5,3]); c.beginPath(); c.moveTo(b.x,Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); c.setLineDash([]); H.text(c,b.x+b.w-4,Y(v)+(v>1?-8:9),l,{al:'right',col:C.amber,font:`700 10px ${SANS}`}); });
-  c.restore();
-  H.text(c,X(1),b.y+12,'受動的方式が見えない',{col:C.s2,font:`700 10px ${SANS}`}); H.text(c,X(1),b.y+25,'（跳躍 8° 未満）',{col:C.s2,font:`600 10px ${SANS}`}); H.text(c,X(1),Y(0.95)+18,'不感帯',{col:C.fault,font:`700 12px ${SANS}`});
-  if(Q.inv==='on'){ H.dot(c,X(r0),Y(Vr(r0)),C.target,6,!!(S_.isl&&!S_.gb)); H.text(c,X(r0)+(r0>1.5?-10:10),Y(Vr(r0))-12,`いま ${r0.toFixed(2)}`,{al:r0>1.5?'right':'left',col:C.target,font:`700 11px ${MONO}`}); }
-  H.text(c,b.x,b.y-14,'島の電圧（INV が出力一定、負荷は抵抗）',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); H.text(c,b.x+b.w,b.y+b.h+22,'太陽光の出力 ÷ 配電線 F1 の負荷（4 MW）',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
-  const th=30*Math.abs(1-r0), y0=b.y+b.h+44, iv=(S_.X||{}).inv||{};
-  const L=[ Q.inv!=='on' ? '太陽光を「あり」にすると、52F1 を開いたあと単独運転になる' : `出力 ${Q.ppv} MW ÷ 負荷 4 MW = ${r0.toFixed(2)} → 島の電圧 ${(Vr(r0)*100).toFixed(0)} %、位相の跳躍 ${th.toFixed(0)}°`,
-    '電圧の継電器（UVR・OVR）：80〜110 % の間は見えない', '受動的方式：跳躍が 8° 未満（出力÷負荷が 0.73〜1.27）は見えない',
-    Q.ipro==='full' ? '能動的方式：INV が揺さぶり、単独運転なら周波数が動く → 約 0.5 s で検出' : '能動的方式：付けていない（不感帯では誰も見つけられない）',
-    S_.isl && !S_.gb ? `いま単独運転 ${(S_.te-S_.isl.t0).toFixed(2)} s・電圧 ${(iv.V*100).toFixed(0)} %・${(iv.f||60).toFixed(2)} Hz` : '' ];
-  L.forEach((s,i)=>{ if(s) H.text(c,20,y0+i*17,'・'+s,{al:'left',col:i===4?C.amber:C.ink,font:`${i===4?700:600} 11px ${SANS}`}); }); }
+  [1,0.99,0.95,0.9].forEach(p=>{ c.beginPath(); c.moveTo(b.x,Y(tq(p))); c.lineTo(b.x+b.w,Y(tq(p))); c.stroke(); c.textAlign='right'; c.textBaseline='middle'; c.fillText(p.toFixed(2),b.x-4,Y(tq(p))); });
+  c.strokeStyle=C.ink; c.lineWidth=1.2; c.strokeRect(b.x,b.y,b.w,b.h); c.restore();
+  H.text(c,(b.x+X(xa))/2,b.y+16,'UVR で見つかる',{col:C.amber,font:`700 10px ${SANS}`}); H.text(c,(X(xb)+b.x+b.w)/2,b.y+16,'OVR で見つかる',{col:C.amber,font:`700 10px ${SANS}`});
+  H.text(c,X(1),Y(0.42),'受動的方式で見つかる',{col:C.s2,font:`700 10px ${SANS}`}); H.text(c,X(1),Y(0.42)+13,'（位相の跳躍 8° 以上）',{col:C.s2,font:`600 10px ${SANS}`}); H.text(c,X(0.97),Y(qt/2),'不感帯',{col:C.fault,font:`700 12px ${SANS}`});
+  if(Q.inv==='on'){ H.dot(c,X(r0),Y(q0),C.target,6,!!(S_.isl&&!S_.gb)); H.text(c,X(r0)+(r0>1.5?-10:10),Y(q0)-12,'いま',{al:r0>1.5?'right':'left',col:C.target,font:`700 11px ${SANS}`}); }
+  H.text(c,b.x-4,b.y-14,'負荷の力率（無効電力）',{al:'left',col:C.muted,font:`600 10px ${SANS}`}); H.text(c,b.x+b.w,b.y+b.h+22,'有効電力：太陽光の出力 ÷ 配電線 F1 の負荷（4 MW）',{al:'right',col:C.muted,font:`600 10px ${SANS}`});
+  const V=Vr(r0), th=Math.acos(pf)*180/Math.PI, iv=(S_.X||{}).inv||{}, y0=b.y+b.h+44;
+  const L=[ Q.inv!=='on' ? '太陽光を「あり」にすると、52F1 を開いたあと単独運転になる' : `出力÷負荷 ${r0.toFixed(2)} → 島の電圧 ${(V*100).toFixed(0)} %${r0<0.826?`（電流制限で出力は ${(V*V*4).toFixed(1)} MW に下がる）`:''}`,
+    `負荷の力率 ${pf.toFixed(2)} → 位相の跳躍 ${th.toFixed(0)}°（INV は力率 1 なので、負荷の力率角の分だけ動く）`,
+    '仮定：損失なし、負荷は定格電圧で 4 MW の抵抗、INV は定格出力。周波数の動きは計算していない',
+    Q.ipro==='full' ? '能動的方式：単独運転なら周波数が 1.5 Hz/s で動くという仮定で、約 0.5 s で検出' : '能動的方式：付けていない',
+    Q.tt==='on' ? '転送遮断：52F1 が開いた信号を通信で送り、0.1 s で 52P を開く（通信が切れると働かない）' : '転送遮断：付けていない',
+    S_.isl && !S_.gb ? `いま単独運転 ${(S_.te-S_.isl.t0).toFixed(2)} s・電圧 ${(iv.V*100).toFixed(0)} %・${(iv.f||60).toFixed(2)} Hz（危険）` : '' ];
+  L.forEach((s,i)=>{ if(s) H.text(c,16,y0+i*16,'・'+s,{al:'left',col:i===5?C.fault:C.ink,font:`${i===5?700:600} 10.5px ${SANS}`}); }); }
 
 /* ===== 操作 ===== */
 const WPARAMS=[
@@ -3927,9 +3941,11 @@ const WPARAMS=[
   {id:'ppv', label:'太陽光の出力', min:1, max:8, step:0.5, fmt:v=>v.toFixed(1)+' MW'},
   {id:'ipro', label:'INV の連系保護', type:'select', options:[['full','UVR・OVR・OFR・UFR・OVGR＋受動的＋能動的'],['pas','能動的方式なし'],['pasng','能動的方式と OVGR なし']]},
   {id:'ldc', label:'線路無電圧確認装置（変電所）', type:'select', options:[['true','あり'],['false','なし']]},
+  {id:'qpf', label:'配電線 F1 の負荷の力率（無効電力）', type:'select', options:[['1','1.00（無効電力なし）'],['0.99','0.99（遅れ）'],['0.95','0.95（遅れ）'],['0.9','0.90（遅れ）']]},
+  {id:'tt', label:'転送遮断（変電所 → INV）', type:'select', options:[['off','なし'],['on','あり']]},
 ];
 const WPRESETS=[
-  {l:'① 送電線の事故（近端）', p:{loc:'Ln',kind:'3p'}, k:'ok', t:'87L と 44S 第1段', note:'近端（2 km）の事故電流は 12.6 kA。87L と 44S の第 1 段がどちらも 0.03 s で動き、52L と 52T1 が 0.08 s に開く。雷のような一時的な事故はアークが消えるので、再閉路で送電が戻る（実際は数秒〜1 分後）。'},
+  {l:'① 送電線の事故（近端）', p:{loc:'Ln',kind:'3p'}, k:'ok', t:'87L と 44S 第1段', note:'近端（2 km）の事故電流は 12.6 kA。87L と 44S の第 1 段がどちらも 0.03 s で動き、52L と 52T1 が 0.08 s に開く。雷のような一時的な事故はアークが消えるので、約 1 分後の再閉路で送電が戻る（待つあいだは早送りする）。'},
   {l:'② 送電線の遠端の事故', p:{loc:'Lf',kind:'3p'}, k:'ok', t:'87L が両端を瞬時に', note:'遠端（18 km）は 44S の第 1 段（線路の 85 %）の外なので、44S は第 2 段の 0.4 s を待つ。87L は区間の中ならどこでも 0.03 s で両端を切るので、44S は復帰する。'},
   {l:'③ 87L が使えないとき', p:{loc:'Lf',kind:'3p',fail:'l87'}, k:'hold', t:'44S 第2段で 0.4 s', note:'87L の伝送路が切れていると、遠端の事故は 44S の第 2 段（0.405 s）でしか切れない。除去が 0.08 s から 0.455 s に延びる。発電機に近い送電線なら、安定度の限界（臨界除去時間 CCT）を超えるおそれがある（「モデル化と解析」タブの動揺方程式）。'},
   {l:'④ 永続事故と再閉路', p:{loc:'Ln',kind:'3p',pers:'perm'}, k:'ok', t:'ロックアウト', note:'事故が永続していると、再閉路した瞬間に 87L と 44S がもう一度動き、ロックアウトする。送電線から先は長時間の停電になる。保護としては正しい動き。'},
@@ -3938,19 +3954,20 @@ const WPRESETS=[
   {l:'⑦ 変圧器の充電', p:{loc:'Tr',kind:'inrush'}, k:'hold', t:'動かないのが正しい', note:'変圧器を入れると、一次側に最大 1,400 A の励磁突入電流が流れる。T87 から見ると内部事故と同じ差電流だが、第 2 高調波（30 %）を見て止める。1 s 後に 52T2 を入れて送電を始める。'},
   {l:'⑦’ 第2高調波の抑制なし', p:{loc:'Tr',kind:'inrush',h2:false}, k:'bad', t:'T87 の誤動作', note:'第 2 高調波の抑制がないと、T87 は突入電流を内部事故と見て 0.03 s で動き、変圧器を入れられない（不要動作）。'},
   {l:'⑧ 6.6 kV 母線の短絡', p:{loc:'B',kind:'3p'}, k:'ok', t:'TS51 が主保護', note:'6.6 kV 母線の事故電流は 14.3 kA。母線の主保護は TS51 で、1.16 s で 52T2 を開く。T87 は区間の外の事故なので、比率で抑えて動かない。TP51（1.62 s）と 44S の第 3 段（2.0 s）は後備。'},
-  {l:'⑨ 配電線の事故', p:{loc:'Fn',kind:'3p'}, k:'ok', t:'F51 と再閉路', note:'配電線 F1 の変電所近くの事故（9.8 kA）。F51 が 0.49 s で動き、52F1 が 0.56 s に開く。TS51（1.47 s）と TP51（2.08 s）は後備で、復帰する。一時的な事故なので、再閉路で戻る。'},
+  {l:'⑨ 配電線の事故', p:{loc:'Fn',kind:'3p'}, k:'ok', t:'F51 と再閉路', note:'配電線 F1 の変電所近くの事故（9.8 kA）。F51 が 0.49 s で動き、52F1 が 0.56 s に開く。TS51（1.47 s）と TP51（2.08 s）は後備で、復帰する。一時的な事故なので、約 1 分後の再閉路で戻る。'},
   {l:'⑩ 52F1 が開かない', p:{loc:'Fn',kind:'3p',fail:'cbf1'}, k:'hold', t:'TS51 が後備', note:'52F1 が故障して開かない。F51 は動作したが事故電流が流れ続け、後備の TS51 が 1.475 s で 52T2 を開く。健全な配電線 F2 も含めて、6.6 kV 母線から先がすべて停電する。'},
   {l:'⑪ TS51 の整定ミス', p:{loc:'Fn',kind:'3p',tsl:1,fl:3}, k:'bad', t:'母線ごと停電', note:'TS51 のレバーを 1、F51 を 3 にした。TS51（0.49 s）が F51（0.73 s）より先に動き、52T2 で母線ごと停電する（協調の失敗）。右の図で、TS51 の線が F51 の線より下に来ていることを確かめよう。'},
   {l:'⑫ 配電線の地絡', p:{loc:'Ff',kind:'lg'}, k:'ok', t:'F67G が選んで切る', note:'配電線 F1 の地絡。F1 の ZCT には 4.5 A が前向きに、健全な F2 の ZCT には 4.0 A が逆向きに流れる。F67G は向きを見て F1 だけを 0.9 s で切る。64B（2.0 s）は後備。'},
   {l:'⑬ 高抵抗の地絡', p:{loc:'Ff',kind:'lg',rg:12}, k:'bad', t:'どれも検出できない', note:'地絡抵抗が 12 kΩ あると、V0 は 4 % しか出ない。F67G（V0 5 %）も 64B（15 %）も整定に届かず、事故が残る（高抵抗地絡。樹木の接触や、断線して地面に落ちた電線で起きる）。Rg を下げて、どこから検出できるか確かめよう。'},
   {l:'⑭ 母線の地絡', p:{loc:'B',kind:'lg'}, k:'ok', t:'64B が 2 s で', note:'6.6 kV 母線の地絡。どの配電線の ZCT にも自分の充電電流が逆向きに流れるだけなので、F67G はどちらも動かない。母線の 64B が 2.0 s で 52T2 を開く。'},
   {l:'⑮ 送電線の地絡', p:{loc:'Lf',kind:'lg'}, k:'ok', t:'87L', note:'66 kV 送電線の地絡。抵抗接地なので地絡電流は約 300 A。87L が 0.03 s で両端を切り、67G（0.5 s）は後備として復帰する。'},
-  {l:'⑯ INV：ほかの配電線の事故', p:{loc:'Gn',kind:'3p',inv:'on'}, k:'ok', t:'解列しない（FRT）', note:'太陽光 4 MW を配電線 F1 の末端につないだ。配電線 F2 の事故で、F1 の末端の電圧は 49 % まで下がるが、F2 の F51 が 0.525 s で動き、0.595 s に事故が除かれる。INV の UVR（1.0 s）は満了せず、運転を続ける（事故時運転継続、FRT）。INV の電流は F1 の F51 を逆向きに流れるが、整定 600 A に届かない。'},
-  {l:'⑰ INV：配電線 F1 の事故', p:{loc:'Fn',kind:'3p',inv:'on'}, k:'ok', t:'再閉路の前に解列', note:'F1 の事故で INV の端子電圧が 20 % 未満になり、INV はゲートブロックで電流を止める。INV は自分では電圧を作れないので、52F1 が開いたあとも F1 は無電圧のまま。UVR が 1.0 s で 52P を開き、2.565 s の再閉路より前に解列する。変電所の線路無電圧確認装置は、無電圧を確かめてから再閉路する。'},
-  {l:'⑱ INV：作業停電（つり合い）', p:{loc:'Fn',kind:'open',inv:'on'}, k:'ok', t:'能動的方式が検出', note:'作業のため 52F1 を開いた。太陽光 4 MW と F1 の負荷 4 MW がつり合っているので、電圧も位相もほとんど変わらない（右の図の不感帯）。能動的方式が周波数のずれを見つけて、切り離されてから 0.50 s で INV を止める。'},
-  {l:'⑲ INV：能動的方式なし', p:{loc:'Fn',kind:'open',inv:'on',ipro:'pas'}, k:'bad', t:'単独運転が続く', note:'同じ作業停電で、能動的方式がない場合。UVR・OVR も受動的方式も不感帯に入っていて見えず、F1 は INV に充電されたまま（作業者の感電のおそれ）。「太陽光の出力」を 2 MW にすると、位相の跳躍が 15° になり、受動的方式が 0.1 s で見つける。'},
-  {l:'⑳ INV：地絡のあと単独運転', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm'}, k:'bad', t:'再閉路できない', note:'能動的方式と OVGR を付けていない INV。F1 の地絡で F67G が 52F1 を開くと、つり合った単独運転が残る（非接地の地絡は線間電圧を変えないので、UVR も動かない）。2.985 s の再閉路のとき F1 に電圧が残っているので、線路無電圧確認装置が再閉路を止める。非同期投入は避けたが、F1 の停電が長引く。OVGR があれば 0.5 s で解列する。'},
-  {l:'㉑ 同じ・線路無電圧確認なし', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm',ldc:false}, k:'bad', t:'非同期投入', note:'線路無電圧確認装置がないと、INV が運転したまま再閉路してしまう（非同期投入）。位相のずれた電源どうしがつながって大きな電流が流れ、INV や負荷の機器を傷める。永続事故なので F67G がもう一度動き、ロックアウトする。'},
+  {l:'⑯ INV：ほかの配電線の事故', p:{loc:'Gn',kind:'3p',inv:'on'}, k:'ok', t:'UVR では解列しない', note:'太陽光 4 MW を配電線 F1 の末端につないだ。配電線 F2 の事故で F1 の末端の電圧は 49 % まで下がるが、F2 の F51 が 0.525 s で動き、0.595 s に事故が除かれる。UVR（1.0 s）より早く電圧が戻るので、UVR では解列しない（時間協調の例）。FRT 要件が運転継続を求めるのは 0.3 s 以下の電圧低下で、この事故はそれより長い。INV の電流は F1 の F51 を逆向きに流れるが、整定 600 A に届かない。'},
+  {l:'⑰ INV：配電線 F1 の事故', p:{loc:'Fn',kind:'3p',inv:'on'}, k:'ok', t:'再閉路の前に解列', note:'F1 の事故で INV の端子電圧が 20 % 未満になり、INV は電流を止める（ゲートブロック）。無電圧から自立して起動しないので（この教材の仮定）、52F1 が開いたあとも F1 は無電圧のまま。UVR が 1.0 s で 52P を開き、約 1 分後の再閉路（60.56 s）より前に解列する。線路無電圧確認装置は無電圧を確かめてから再閉路する。'},
+  {l:'⑱ INV：作業停電（つり合い）', p:{loc:'Fn',kind:'open',inv:'on'}, k:'ok', t:'能動的方式が検出', note:'作業のため 52F1 を開いた。太陽光 4 MW と F1 の負荷 4 MW がつり合い、負荷の力率も 1 なので、電圧も位相もほとんど変わらない（右の図の不感帯）。開いた瞬間から線路は INV に充電されていて危険。能動的方式が、切り離されてから 0.50 s で見つけて INV を止める（能動的方式で周波数がどう動くかは教材の仮定）。'},
+  {l:'⑲ INV：能動的方式なし', p:{loc:'Fn',kind:'open',inv:'on',ipro:'pas'}, k:'bad', t:'単独運転が続く', note:'同じ作業停電で、能動的方式がない場合。UVR・OVR も受動的方式も不感帯に入っていて見えず、F1 は INV に充電されたまま。「負荷の力率」を 0.95 にすると位相が 18° 跳び、受動的方式が 0.1 s で見つける。「太陽光の出力」を 2 MW にすると電圧が 55 % に下がり、UVR が 1.0 s で見つける。'},
+  {l:'⑳ INV：地絡のあと単独運転', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm'}, k:'bad', t:'再閉路できない', note:'能動的方式と OVGR を付けていない INV。F1 の地絡で F67G が 52F1 を開くと、つり合った単独運転が残る（非接地の地絡は線間電圧をほとんど変えないので、UVR では見つけにくい）。約 1 分後の再閉路のとき F1 に電圧が残っているので、線路無電圧確認装置が投入を待たせ、10 s たっても消えないのでロックアウトする。非同期投入は避けたが、F1 の停電が長引く。OVGR があれば 0.5 s で解列する。'},
+  {l:'㉑ 同じ・線路無電圧確認なし', p:{loc:'Ff',kind:'lg',inv:'on',ipro:'pasng',pers:'perm',ldc:false}, k:'bad', t:'非同期投入のおそれ', note:'線路無電圧確認装置がないと、INV が充電している線路に、同期を確かめないまま再閉路してしまう（非同期投入のおそれ。投入の過渡はここでは計算しない）。永続事故なので F67G がもう一度動いてロックアウトし、F1 はまた単独運転になる。'},
+  {l:'㉒ INV：転送遮断', p:{loc:'Fn',kind:'open',inv:'on',ipro:'pas',tt:'on'}, k:'ok', t:'不感帯でも止まる', note:'⑲ と同じ不感帯の作業停電で、転送遮断を付けた場合。52F1 が開いた信号を通信で INV へ送り、0.1 s で 52P を開く（0.215 s）。島の電圧や位相に頼らないので不感帯はない。そのかわり通信が切れると働かないので、単独運転の検出と組み合わせる。'},
 ];
 function wBuild(){ $('wparams').innerHTML=WPARAMS.map(p=>{ const id='wp-'+p.id, v=WQ[p.id];
     if(p.type==='select') return `<div class="param"><label for="${id}">${p.label}</label><select id="${id}" data-k="${p.id}">${p.options.map(([o,l])=>`<option value="${o}"${String(v)===o?' selected':''}>${l}</option>`).join('')}</select></div>`;
@@ -3989,9 +4006,9 @@ function wDOM(){ const D=WS.dev, Q=WQ, f=WFP[Q.loc], lg=Q.kind==='lg', X=WS.X||{
   let pill, msg;
   if(Q.kind==='inrush' && !WS.ev){ pill=['var(--muted)','停止中']; msg='変圧器は切り離してある。「変圧器を充電する」で 52T1 を入れる'; }
   else if(!WS.ev){ pill=null; }
-  else { const inr = X.inr && X.inr.I>0.3; pill = faultOn ? ['var(--amber)','事故中'] : hazard ? ['var(--amber)','単独運転'] : inr ? ['var(--amber)','突入電流'] : outs.length ? ['var(--fault)','停電'] : ['var(--ok)','給電中'];
+  else { const inr = X.inr && X.inr.I>0.3; pill = faultOn ? ['var(--amber)','事故中'] : hazard ? ['var(--fault)','単独運転・危険'] : inr ? ['var(--amber)','突入電流'] : outs.length ? ['var(--fault)','停電'] : ['var(--ok)','給電中'];
     msg = (faultOn?'事故電流が流れている。':'') + (inr?'変圧器の励磁突入電流が流れている。':'') + (outs.length?'系統から停電している範囲：'+outs.join('・'):(faultOn||inr?'':'事故は取り除かれ、すべて給電中'))
-      + (hazard?'。ただし太陽光（INV）が単独運転で一部を充電している':''); }
+      + (hazard?'。ただし太陽光（INV）が単独運転で一部を充電している（停電したはずの線路に電気が来ていて危険）':''); }
   const vh = pill ? `<span class="pill" style="background:${pill[0]}">${pill[1]}</span><span>${msg}${WS.ev?`　（${Q.kind==='inrush'?'投入':Q.kind==='open'?'開放':'事故'}から ${WS.te.toFixed(3)} s）`:''}</span>` : '<span class="pill">平常</span><span>事故の場所を図の丸か「シナリオ」で選ぶ</span>';
   const ve=$('wverdict'); if(ve._h!==vh){ ve.innerHTML=vh; ve._h=vh; }
   $('wfire').textContent = Q.kind==='inrush' ? (WS.ev?'もう一度充電する':'変圧器を充電する') : Q.kind==='open' ? (WS.ev?'もう一度開く':'52F1 を開く') : (WS.ev?'もう一度起こす':'事故を起こす');
@@ -3999,7 +4016,7 @@ function wDOM(){ const D=WS.dev, Q=WQ, f=WFP[Q.loc], lg=Q.kind==='lg', X=WS.X||{
   const {E,tx}=wExpCache, busy=WROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped);
   const quiet = WS.ev && !busy && (Q.kind==='inrush' ? WS.te>1.5 : Q.kind==='open' ? WS.te>1.0 && !hazard : WS.te>0.3 && faultOn);
   let res = WS.ev ? expJudge(E, WS.trips, WS.ever, wNm, quiet, !(Q.kind==='open' ? hazard : faultOn)) : null;
-  if(WS.ev && hazard && res && res[0]==='run') res=['run','単独運転が続いている。INV の連系保護が見つけるのを待っている。']; if(WS.ev && WS.hz) res=['bad', WHZT[WS.hz]];
+  if(WS.ev && hazard && res && res[0]==='run') res=['run','単独運転中（危険）。INV の連系保護が見つけるのを待っている。']; if(WS.ev && WS.hz) res=['bad', WHZT[WS.hz]];
   if(res && res[0]==='ok' && Q.kind==='open' && E.main.includes('inv')) res=['ok','太陽光（INV）の連系保護が単独運転を見つけて INV を止めた。配電線 F1 は停電した（作業できる状態）。'];
   if(res && res[0]==='ok' && E.no.includes('inv') && !WS.trips.some(t=>t.id==='inv')) res=['ok',res[1]+' 太陽光（INV）は解列せずに運転を続けた（FRT）。'];
   const eh=expHTML(E, wNm, id=>tx[id], res), ee=$('wexp'); if(ee._h!==eh){ ee.innerHTML=eh; ee._h=eh; }
