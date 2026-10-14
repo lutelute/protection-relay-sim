@@ -61,6 +61,8 @@
 
 整定値・動作時間はアニメーション用の代表例です。実機の整定は保護協調計算で決めてください。継電器は瞬時復帰、波形は概念図です。再閉路は約 1 分後の実時間で、待つあいだに何も変わらなければ早送りします（前提はページ内の「計算の前提」に書いています）。
 
-## ライセンス
+## 作成者とライセンス
 
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)（クリエイティブ・コモンズ 表示 4.0 国際）。出典を示せば、講義資料への転載・改変・再配布ができます。出典は「保護継電器 動作シミュレータ（lutelute）https://lutelute.github.io/protection-relay-sim/ 」のように書いてください。条文は [LICENSE](LICENSE) にあります。
+作成：重信 颯人（福井大学 学術研究院 工学系部門）
+
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)（クリエイティブ・コモンズ 表示 4.0 国際）。出典を示せば、講義資料への転載・改変・再配布ができます。出典は「重信 颯人（福井大学）『保護継電器 動作シミュレータ』https://lutelute.github.io/protection-relay-sim/ 」のように書いてください。条文は [LICENSE](LICENSE) にあります。
