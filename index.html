@@ -1119,31 +1119,35 @@ function diffScene(S,P,ratio){ const m=S.m, on=S.ev&&!S.open, inF=P.loc==='in', 
   G.trip([[ratio?312:315,26],[140,26],[140,168]], S); G.trip([[ratio?388:385,26],[560,26],[560,168]], S);
   G.text(200,128,`I1 = ${I1.toFixed(1)}`,{col:C.ink,font:`700 11px ${MONO}`}); G.text(500,128,`I2 = ${I2.toFixed(1)}`,{col:C.ink,font:`700 11px ${MONO}`});
   G.text(350,300,`差電流 Id（I1 と I2 のベクトル差）= ${m.Id.toFixed(2)}`,{font:`700 14px ${MONO}`, col:m.Id>=(ratio?m.thr:P.set)?C.fault:C.ink});
-  if(ratio && m.blk) G.text(350,322, m.why==='h2' ? `第 2 調波 ${(m.h2*100).toFixed(0)} % → 飽和とみて止めている` : '外部事故と判定 → 止めている',{font:`700 12px ${SANS}`, col:C.amber});
+  if(S.tripped){}   /* 動作したあとは、止める・止めないを書かない */
+  else if(ratio && m.pickI) G.text(350,322,`差動瞬時要素：Id ≥ ${P.uis} → 止める機能を通らずに動く`,{font:`700 12px ${SANS}`, col:C.fault});
+  else if(ratio && m.blk) G.text(350,322, m.why==='h2' ? `第 2 調波 ${(m.h2*100).toFixed(0)} % → 飽和とみて止めている` : '外部事故と判定 → 止めている',{font:`700 12px ${SANS}`, col:C.amber});
 }
 /* ===== CT の飽和（差動用） =====
    一次電流は交流分＋直流分（X/R = 20、事故の瞬間の電圧の位相 α）。鉄心の磁束 λ は二次電流の積分（抵抗負担）で、
    |λ| が飽和磁束を超えると励磁電流が急に増え、二次電流が欠ける。飽和磁束は「余裕」＝ 定格電流の交流で受け持つ磁束の何倍か。
-   CT1 は飽和しない、CT2 だけ飽和しやすいとした（二次負担が大きい・残留磁束がある、などで特性がそろわない例）。
+   CT2 は飽和しやすいとした（二次負担が大きい・残留磁束がある、などで特性がそろわない例）。CT1 は比率差動で
+   「CT1 の飽和までの余裕」を下げたときだけ飽和させる（内部事故の大電流と直流分で飽和する例）。
    継電器は 1 サイクルの DFT で基本波を取り出し、極性をそろえてベクトルの差をとる。0.01 ms 刻みで 0.4 s まで計算して覚えておく。
    移行事故（RDFR）：外部事故の 0.1 s 後に変圧器の中でも事故が起き、CT2 の一次電流は負荷電流ほどに下がる（2 ms で移る）。
    外部事故の判定：事故を検出（瞬時値の Ir ≥ 2）してから 2 ms のあいだ、瞬時値の Id が Ir の 2 割未満なら外部事故とする
    （CT はこのあいだは飽和しないとみる）。差電流の第 2 調波も、同じ 1 サイクルの窓の DFT で求める */
+const CT1_FREE=410, ct1Ks=P=> P.ks1==null||P.ks1>=CT1_FREE ? Infinity : P.ks1;   /* CT1 の余裕。410 は「飽和しない」 */
 const CTW=TAU*60, CT_XR=20, CT_TD=CT_XR/CTW, CT_PHI=Math.atan(CT_XR), CT_DT=1e-5, CT_T0=-1/60, CT_END=0.4, CT_N=Math.round(1/60/CT_DT), CT_EVO=0.1;
 let ctMemo={key:'', r:null};
-function ctRun(P, M){ const inF=P.loc==='in', evo=P.loc==='evo', key=[P.loc,M,P.ks,P.alpha].join('|'); if(ctMemo.key===key) return ctMemo.r;
+function ctRun(P, M){ const inF=P.loc==='in', evo=P.loc==='evo', key=[P.loc,M,P.ks,P.alpha,ct1Ks(P)].join('|'); if(ctMemo.key===key) return ctMemo.r;
   const a=(P.alpha||0)*Math.PI/180, r2=Math.SQRT2, thL=Math.acos(0.95), IL=1;
   const flt=(t,Mf)=> r2*Mf*Math.sin(CTW*t+a-CT_PHI) + (r2*IL*Math.sin(a-thL)-r2*Mf*Math.sin(a-CT_PHI))*Math.exp(-t/CT_TD), ld=t=> r2*0.15*Math.sin(CTW*t+a-thL);
   const pre=t=> r2*IL*Math.sin(CTW*t+a-thL), ip1=t=> t<0?pre(t):flt(t,M), ip2=t=> t<0?pre(t): inF ? ld(t) : evo&&t>=CT_EVO ? (w=>w*flt(t,M)+(1-w)*ld(t))(Math.exp(-(t-CT_EVO)/0.002)) : flt(t,M);
-  const n=Math.round((CT_END-CT_T0)/CT_DT), s1=new Float32Array(n), s2=new Float32Array(n); let lam=-IL*Math.cos(CTW*CT_T0+a-thL), sat=0, tdet=null, ef;
-  for(let k=0;k<n;k++){ const t=CT_T0+k*CT_DT, i=ip2(t), ex=Math.abs(lam)-P.ks, is = ex>0 ? i-Math.sign(lam)*40*ex : i; if(ex>0 && t>=0) sat++; s1[k]=ip1(t); s2[k]=is; lam+=CT_DT*CTW/r2*is;
+  const n=Math.round((CT_END-CT_T0)/CT_DT), s1=new Float32Array(n), s2=new Float32Array(n); let lam=-IL*Math.cos(CTW*CT_T0+a-thL), lam1=lam, sat=0, sat1=0, tdet=null, ef; const k1=ct1Ks(P);
+  for(let k=0;k<n;k++){ const t=CT_T0+k*CT_DT, i=ip2(t), ex=Math.abs(lam)-P.ks, is = ex>0 ? i-Math.sign(lam)*40*ex : i; if(ex>0 && t>=0) sat++; const i1=ip1(t), e1=Math.abs(lam1)-k1; s1[k] = e1>0 ? i1-Math.sign(lam1)*40*e1 : i1; if(e1>0 && t>=0) sat1++; lam1+=CT_DT*CTW/r2*s1[k]; s2[k]=is; lam+=CT_DT*CTW/r2*is;
     if(t>=0 && ef===undefined){ const ir=(Math.abs(s1[k])+Math.abs(is))/2, id=Math.abs(s1[k]-is); if(tdet==null && ir>=2) tdet=t;
       if(tdet!=null){ if(id>=0.2*ir) ef=null; else if(t>=tdet+0.002) ef=t; } } }
   const ph=[], f=r2/CT_N;
   for(let ms=0; ms<=Math.round(CT_END*1000); ms++){ const ke=Math.round((ms/1000-CT_T0)/CT_DT); let x1=0,y1=0,x2=0,y2=0,hx=0,hy=0;
     for(let k=ke-CT_N;k<ke;k++){ const t=CT_T0+k*CT_DT, cc=Math.cos(CTW*t), ss=Math.sin(CTW*t), d=s1[k]-s2[k]; x1+=s1[k]*cc; y1+=s1[k]*ss; x2+=s2[k]*cc; y2+=s2[k]*ss; hx+=d*(cc*cc-ss*ss); hy+=d*2*cc*ss; }
     ph.push([x1*f,y1*f,x2*f,y2*f,hx*f,hy*f]); }
-  const r={s1,s2,ph,sat:sat*CT_DT,ef:ef==null?null:ef,tdet}; ctMemo={key,r}; return r; }
+  const r={s1,s2,ph,sat:sat*CT_DT,sat1:sat1*CT_DT,ef:ef==null?null:ef,tdet}; ctMemo={key,r}; return r; }
 /* 事故から u 秒の値。h2 は差電流の第 2 調波 ÷ 基本波、ang は I1 と（向きをそろえた）I2 の位相差：
    0° なら両方とも区間へ流れ込む（内部）、180° なら区間を通り抜ける（外部）。I2 が 0.5 未満なら向きに数えない（負荷電流など） */
 function diffAt(r,u){ const p=r.ph[Math.min(r.ph.length-1, Math.max(0,Math.round(u*1000)))], I1=Math.hypot(p[0],p[1]), I2=Math.hypot(p[2],p[3]), Id=Math.hypot(p[0]-p[2],p[1]-p[3]), Ir=(I1+I2)/2;
@@ -1170,22 +1174,30 @@ function diffZoom(c,S,P,M,ratio){ zHead(c,'実際の 60 Hz の波形（拡大）
   if(sd!=='none' && sd!=='h2' && r.ef!=null) zMark(c,b1,w1,r.ef,`外部事故と判定 ${(r.ef*1000).toFixed(1)} ms`,C.s1,[],12);
   if(evo) zMark(c,b1,w1,CT_EVO,'区間の中でも事故',C.fault,[2,3],0);
   const b2={x:300,y:28,w:166,h:100}, w2=[0,0.25], gone=u=>uo!=null&&u>=uo, thr=u=>{ const d=diffAt(r,u); return ratio ? Math.max(0.3,P.slope/100*d.Ir) : P.set; };
-  const idAt=u=> gone(u)?0 : diffAt(r,u).Id, blkAt=u=> !gone(u) && sd!=='none' && idAt(u)>=thr(u) && !!satBlock(P,diffAt(r,u));
-  let y2=0.5; for(let u=0;u<=0.25;u+=0.001) y2=Math.max(y2,idAt(u),Math.min(thr(u),M)); y2*=1.25;
+  const idAt=u=> gone(u)?0 : diffAt(r,u).Id, blkAt=u=> !(S.tripped&&u>S.tTrip) && !gone(u) && sd!=='none' && idAt(u)>=thr(u) && !!satBlock(P,diffAt(r,u));
+  let y2=0.5; for(let u=0;u<=0.25;u+=0.001) y2=Math.max(y2,idAt(u),Math.min(thr(u),M)); const ui=ratio&&P.ui!=='off'; let idMax=0; for(let u=0;u<=0.25;u+=0.001) idMax=Math.max(idMax,idAt(u));
+  if(ui && idMax>=0.5*P.uis) y2=Math.max(y2,P.uis); y2*=1.25;
   zBox(c,b2,ratio?'差電流 Id と、比率×Ir（点線）':'差電流 Id と整定値（点線）');
   /* 飽和とみて止めた時間を帯で示す */
   if(sd!=='none'){ const {X}=zMap(b2,w2,1), ue=Math.min(0.25,now); let u0=null, lab=null; c.save(); c.fillStyle=rgba(C.amber,0.28);
     for(let u=0;u<=ue+1e-9;u+=0.001){ const on=blkAt(u); if(on&&u0==null) u0=u; if((!on||u+0.001>ue)&&u0!=null){ const ux=on?u:u-0.001; c.fillRect(X(u0),b2.y+12,Math.max(1,X(ux+0.001)-X(u0)),b2.h-12); if(!lab) lab=[u0,ux]; u0=null; } }
     c.restore(); if(lab) H.text(c,Math.min(b2.x+b2.w-20,X((lab[0]+lab[1])/2)),b2.y+27,'止めた',{col:C.amber,font:`700 9.5px ${SANS}`}); }
-  zLine(c,b2,w2,y2,u=>Math.min(thr(u),y2),now,C.target,1.3,[5,3],true); zLine(c,b2,w2,y2,idAt,now,C.fault,1.8,null,true);
+  zLine(c,b2,w2,y2,u=>Math.min(thr(u),y2),now,C.target,1.3,[5,3],true);
+  if(ui && P.uis<y2){ zLine(c,b2,w2,y2,()=>P.uis,0.25,C.fault,1,[2,3],true); H.text(c,b2.x+b2.w-4,zMap(b2,w2,y2,true).Y(P.uis)-7,`瞬時要素 ${P.uis}`,{al:'right',col:C.fault,font:`700 9.5px ${SANS}`}); }
+  zLine(c,b2,w2,y2,idAt,now,C.fault,1.8,null,true);
   if(evo) zMark(c,b2,w2,CT_EVO,'',C.fault,[2,3],0);
   if(S.tripped) zMark(c,b2,w2,S.tTrip,'動作',C.target,[],0);
   H.text(c,b2.x+b2.w-4,b2.y+b2.h+8,'0.25 s',{al:'right',col:C.muted,font:`500 9.5px ${MONO}`}); H.text(c,b2.x,b2.y+b2.h+8,'0',{al:'left',col:C.muted,font:`500 9.5px ${MONO}`});
-  const uEnd=evo?CT_EVO-0.001:0.25; let over=0, run=0, eff=0, re=0; for(let u=0;u<=uEnd;u+=0.001){ const o=idAt(u)>=thr(u); if(o){ run++; over=Math.max(over,run); } else run=0; if(o&&!blkAt(u)){ re++; eff=Math.max(eff,re); } else re=0; }
-  const l1 = P.loc==='in' ? '内部事故：CT2 には負荷電流しか流れず、事故電流は CT1 だけを通る。差電流は事故電流そのもの'
+  const uEnd=evo?CT_EVO-0.001:0.25; let over=0, run=0, eff=0, re=0, nb=0, ri=0, runI=0; for(let u=0;u<=uEnd;u+=0.001){ const o=idAt(u)>=thr(u); if(o){ run++; over=Math.max(over,run); } else run=0; if(o&&!blkAt(u)){ re++; eff=Math.max(eff,re); } else re=0; if(o&&blkAt(u)) nb++;
+    if(ui && idAt(u)>=P.uis){ ri++; runI=Math.max(runI,ri); } else ri=0; }
+  const l1 = P.loc==='in' ? (r.sat1>0 ? `内部事故：事故電流は CT1 だけを通る。直流分で CT1 も飽和し（${(r.sat1*1000).toFixed(0)} ms）、差電流が欠けて第 2 調波を含む` : '内部事故：CT2 には負荷電流しか流れず、事故電流は CT1 だけを通る。差電流は事故電流そのもの')
     : evo ? `移行事故：0.1 s までは外部事故${r.sat>0?'で CT2 が飽和':''}。0.1 s に区間の中でも事故が起き、I2 が消える`
     : r.sat>0 ? `外部事故：直流分で CT2 の鉄心が飽和し、二次電流が欠ける（飽和 ${(r.sat*1000).toFixed(0)} ms）。欠けた分が差電流に見える` : '外部事故：CT2 は飽和しない。両方の CT の二次電流がそろい、差電流はほぼ 0';
-  const l2 = P.loc==='in' ? (sd==='h2'||sd==='both' ? '事故の直後は DFT の窓に事故前の波形が残り、第 2 調波が多く見える。そのぶん止めて、動作が遅れる' : '')
+  const hiI = ui ? `差電流の最大 ${idMax.toFixed(1)}（瞬時要素の整定 ${P.uis}${idMax>=P.uis?' を超える':''}）` : '';
+  const l2 = P.loc==='in' ? (r.sat1>0 && (sd==='h2'||sd==='both') ? (ui && runI>=10 ? `比率要素は第 2 調波で止められるが、差電流が瞬時要素の整定 ${P.uis} を ${runI} ms 超える（0.01 s で動く）`
+        : `${S.tripped?'動作までに':''}第 2 調波で止めた時間は計 ${nb} ms${ui?`。差電流の最大 ${idMax.toFixed(1)}（瞬時要素の整定 ${P.uis}${idMax>=P.uis?`、超えたのは最長 ${runI} ms`:''}）`:''}`)
+      : sd==='h2'||sd==='both' ? '事故の直後は DFT の窓に事故前の波形が残り、第 2 調波が多く見える。そのぶん止めて、動作が遅れる' : hiI)
+    : ui && runI>0 ? `差電流が瞬時要素の整定 ${P.uis} を超えた時間は最長 ${runI} ms（0.01 s を超えると、止める機能に関係なく動く）`
     : sd!=='none' ? `${evo?'0.1 s までに、':''}比率×Ir を超えた時間は最長 ${over} ms、止めた分を除くと最長 ${eff} ms（0.05 s を超えると動く）`
     : `${evo?'0.1 s までに、':''}差電流が${ratio?'比率×Ir':'整定値'}を超えた時間は最長 ${over} ms（動作時間 0.05 s を超えると動いてしまう）`;
   zFoot(c,l1,l2); }
@@ -1222,48 +1234,63 @@ RELAYS.push({
 <script>
 "use strict";
 /* ---------- 9. 比率差動継電器 RDFR (87) ---------- */
+/* 差動瞬時要素（87H）：差電流が整定以上なら、比率の抑制も飽和を見つけて止める機能も通さずに動く。判定は比率要素と同じ 1 サイクルの DFT の差電流 */
+const UI_T=0.01;
 RELAYS.push({
   id:'rdfr', no:'87', ab:'RDFR', name:'比率差動継電器', en:'Ratio Differential Relay', group:'差電流と通過電流の比', fireLabel:'事故を起こす',
   params:[
     {id:'loc', label:'事故の場所', type:'select', options:[['ext','外部事故（保護区間の外）'],['in','内部事故（変圧器の中）'],['evo','移行事故（外部事故の 0.1 s 後に区間の中でも）']], value:'ext', reset:true},
     {id:'sd', label:'飽和を見つけて止める機能', type:'select', options:[['none','なし（比率だけ）'],['h2','第 2 調波で止める'],['ef','外部事故の判定＋位相比較'],['efn','外部事故の判定だけ（位相比較なし）'],['both','第 2 調波＋外部事故の判定']], value:'none', reset:true},
+    {id:'ui', label:'差動瞬時要素（差電流がとても大きければ、抑制も止めもなしに動く）', type:'select', options:[['on','あり'],['off','なし']], value:'on'},
     {id:'ks', label:'CT2 の飽和までの余裕（定格の交流磁束の何倍）', min:20, max:400, step:10, value:130, fmt:v=>v+' 倍'},
+    {id:'ks1', label:'CT1 の飽和までの余裕（内部事故の大電流で飽和するか）', min:20, max:CT1_FREE, step:10, value:CT1_FREE, fmt:v=>v>=CT1_FREE?'飽和しない':v+' 倍'},
     {id:'alpha', label:'事故の瞬間の電圧の位相（直流分の大きさ）', min:0, max:180, step:15, value:0, fmt:v=>v+'°'},
     {id:'slope', label:'比率（抑制の傾き）', min:20, max:60, step:5, value:40, fmt:v=>v+' %'},
     {id:'mult', label:'事故電流（定格の何倍か）', min:2, max:20, step:0.5, value:8, fmt:v=>v.toFixed(1)+' 倍'},
     {id:'h2s', label:'第 2 調波の整定（差電流の第 2 調波 ÷ 基本波）', min:10, max:40, step:5, value:15, fmt:v=>v+' %'},
+    {id:'uis', label:'差動瞬時要素の整定（差電流が定格の何倍で動くか）', min:3, max:20, step:1, value:10, fmt:v=>v+' 倍'},
   ],
   desc:`<p>差電流の、通過電流に対する比率が設定値以上になると動作する差動継電器。外部事故で通過電流が大きくなると、変流器の特性差や飽和で差電流が出て、ふつうの差動継電器は誤動作しやすい。比率差動では通過電流が大きいほど動作に必要な差電流も大きくするので、この誤動作を防ぎやすい。ただし CT の飽和がひどく、差電流と通過電流の比（Id / Ir）が設定比率を超える時間が動作時間より長く続くと防げない（比率 40 % なら、CT2 の基本波がおよそ 33 % 欠けると境目）。そこで実機では、飽和を見つけて止める機能を足す（「飽和を見つけて止める機能」で選ぶ）。</p>
         <p><b>第 2 調波で止める：</b>飽和した CT の電流は半サイクルごとに欠けるので、差電流は片側に偏った山の形になり、第 2 調波を多く含む。差電流の第 2 調波が基本波の 15 % 以上なら止める（変圧器の励磁突入電流を止める仕組みと同じ）。ただし事故の直後は、DFT の窓に事故前の波形が残って第 2 調波が多く見えるので、内部事故でも動作が約 0.01 s 遅れる。</p>
         <p><b>外部事故の判定：</b>CT は事故の瞬間から飽和するわけではなく、少なくとも数 ms は電流を正しく写す。そこで、事故を検出してから 2 ms のあいだ差電流がほとんど出なければ（Ir の 2 割未満）外部事故と判定し、そのあとに出る差電流は飽和によるものとみて止める。内部事故では差電流が通過電流と同時に出るので、この判定にかからず遅れない。ただし止めっぱなしにすると、外部事故のあとで区間の中にも事故が起きたとき（移行事故）に動けない。そこで I1 と I2 の位相を比べ、両方が区間へ流れ込む向き（または I2 がほぼ 0）になったら止めを外す（位相比較）。CT が 2 ms より早く飽和すると判定できないので、実機は第 2 調波と組み合わせる。</p>
-        <p class="key">はじめは「外部事故・CT2 の余裕 130 倍」。DFR なら不要動作する条件だが、右図の点は斜線の下（抑制域）にとどまる（Id / Ir は最大 29 %）。余裕を 60 倍に下げると、斜線を越える時間が 0.05 s を超えて動いてしまう。下の拡大図で、CT2 の二次電流が欠けるようすを見られる。同じ 60 倍でも、飽和を見つけて止める機能を入れると、斜線を越えたあいだ（拡大図の黄色の帯）を止めて動かない。「移行事故」では、0.1 s 後に区間の中で起きた事故を、位相比較で止めを外して切る。位相比較がないと見逃す。内部事故に切り替えると点は斜線の上に跳ね、すぐ動作する。そのぶん検出感度と動作速度を高くできる。</p>`,
-  meta:[['器具番号','87 <small>比率差動（変圧器用は 87T と書く例も）</small>'],['入力','保護区間両端の CT 二次電流'],['整定の例','最小動作 0.3 倍・比率 40 %・瞬時'],['動作条件','Id ≥ 比率 × Ir かつ Id ≥ 最小動作値 <small>Ir = (|I1| + |I2|) / 2</small>'],['飽和を見つけて止める','第 2 調波 ≥ 15 % <small>または</small> 外部事故と判定し I1・I2 が逆向き']],
+        <p><b>差動瞬時要素：</b>差電流が整定（ここでは定格の 10 倍）以上なら、比率の抑制も、飽和を見つけて止める機能も通さずに 0.01 s で動く。区間の中の大事故では、事故電流の直流分で CT1 も飽和することがある。差電流が欠けて第 2 調波を含むので、第 2 調波で止める方式では、そのあいだ止められて動作が大きく遅れる。差動瞬時要素は、これを止めずに切る。CT1 も飽和しきるまでの最初の 1 サイクルほどは電流を正しく写すので、そのうちに動ける（下の拡大図）。ただし止める機能が効かないので、整定は、外部事故で CT が飽和して出る差電流（と励磁突入電流）より上に置く。変圧器を通り抜ける外部事故の電流は変圧器のインピーダンスで頭打ちになり（%Z 10 % なら定格の 10 倍）、区間の中の事故（とくに電源側の端子の近く）はそれより大きくなりうる。その間に整定を置く。</p>
+        <p class="key">はじめは「外部事故・CT2 の余裕 130 倍」。DFR なら不要動作する条件だが、右図の点は斜線の下（抑制域）にとどまる（Id / Ir は最大 29 %）。余裕を 60 倍に下げると、斜線を越える時間が 0.05 s を超えて動いてしまう。下の拡大図で、CT2 の二次電流が欠けるようすを見られる。同じ 60 倍でも、飽和を見つけて止める機能を入れると、斜線を越えたあいだ（拡大図の黄色の帯）を止めて動かない。「移行事故」では、0.1 s 後に区間の中で起きた事故を、位相比較で止めを外して切る。位相比較がないと見逃す。内部事故に切り替えると点は斜線の上に跳ね、すぐ動作する。そのぶん検出感度と動作速度を高くできる。「内部事故・CT1 も飽和」（事故電流 12 倍）では、第 2 調波で止める方式だけだと 0.19 s まで遅れる。差動瞬時要素を「あり」にすると、差電流が整定の 10 倍を超えたところで 0.02 s で切る。瞬時要素の整定を 5 倍に下げると、強い飽和の外部事故で、止める機能があっても動いてしまう。</p>`,
+  meta:[['器具番号','87 <small>比率差動（変圧器用は 87T と書く例も）</small>'],['入力','保護区間両端の CT 二次電流'],['整定の例','最小動作 0.3 倍・比率 40 %・瞬時'],['動作条件','Id ≥ 比率 × Ir かつ Id ≥ 最小動作値 <small>Ir = (|I1| + |I2|) / 2</small>'],['飽和を見つけて止める','第 2 調波 ≥ 15 % <small>または</small> 外部事故と判定し I1・I2 が逆向き'],['差動瞬時要素','Id ≥ 整定（ここでは 10 倍）なら、抑制も止めもなしに 0.01 s']],
   chartTitle:'比率差動特性', chartSub:'縦 = 差電流 Id、横 = 通過電流 Ir',
-  trend:P=>({min:0,max:P.mult*1.1,th:[],series:[{label:'Id（動作量）',col:'fault'},{label:'比率×Ir（抑制量）',col:'s1',dash:[5,3]}],tf:v=>v.toFixed(0)}),
-  measure(S,P){ const d=diffCurrents(S,P,P.mult), on=S.ev&&!S.open; const thr=Math.max(0.3,P.slope/100*d.Ir), over=d.Id>=thr, why=on&&over?satBlock(P,d):'', pick=over&&!why;
+  trend:P=>({min:0,max:P.mult*1.1,th:P.ui!=='off'&&P.uis<P.mult*1.1?[{v:P.uis,label:'差動瞬時要素',col:C.fault}]:[],series:[{label:'Id（動作量）',col:'fault'},{label:'比率×Ir（抑制量）',col:'s1',dash:[5,3]}],tf:v=>v.toFixed(0)}),
+  measure(S,P){ const d=diffCurrents(S,P,P.mult), on=S.ev&&!S.open; const thr=Math.max(0.3,P.slope/100*d.Ir), over=d.Id>=thr, why=on&&over?satBlock(P,d):'', pick=over&&!why, ui=P.ui!=='off', pickI=ui&&on&&d.Id>=P.uis;
     if(why){ S.x.blk=(S.x.blk||0)+S.dt; S.x.why=why; }
     const tr=S.x.trail||(S.x.trail=[]); tr.push([d.Ir,d.Id]); if(tr.length>160) tr.shift();
     const rr=(d.Id/Math.max(d.Ir,1e-6)*100).toFixed(0), WHY={h2:`第 2 調波 ${(d.h2*100).toFixed(0)} % ≥ ${P.h2s} % なので止めている`, ef:P.sd==='efn'?'外部事故と判定したので止めている':`外部事故と判定し、I1 と I2 が逆向き（${d.ang.toFixed(0)}°）なので止めている`};
     const blkTxt = S.x.why==='h2' ? '差電流に第 2 調波が多いので、飽和とみて止めた' : P.sd==='efn' ? '事故の直後に外部事故と判定して止めた' : '事故の直後、差電流が出る前に通過電流が増えたので外部事故と判定し、I1 と I2 が逆向きのあいだ止めた';
-    return {v:[d.Id,thr], pick, delay:0.05, should:P.loc==='in'||(P.loc==='evo'&&S.te>=CT_EVO), ...d, thr, blk:!!why, why,
-      detect: pick?`Id/Ir = ${rr}% ≥ ${P.slope}%`: why?`Id/Ir = ${rr}% ≥ ${P.slope}%。ただし${WHY[why]}`:`Id/Ir = ${rr}%`,
-      readout:[['差電流 Id',d.Id.toFixed(2)],['通過電流 Ir',d.Ir.toFixed(2)],['比率 Id/Ir',rr+' %'],['差電流の第 2 調波 ÷ 基本波',on&&d.Id>0.05?(d.h2*100).toFixed(0)+' %':'—'],['I1 と I2 の位相差（0° = 両方流れ込む）',!on?'—':d.I2<0.5?'I2 ほぼ 0':d.ang.toFixed(0)+'°']],
+    return {v:[d.Id,thr], pick:pick||pickI, delay:0.05, elems: ui?[{pick,delay:0.05},{pick:pickI,delay:UI_T}]:[{pick,delay:0.05}], pickR:pick, pickI, should:P.loc==='in'||(P.loc==='evo'&&S.te>=CT_EVO), ...d, thr, blk:!!why, why,
+      detect: pickI?`Id = ${d.Id.toFixed(1)} ≥ ${P.uis}（差動瞬時要素）`: pick?`Id/Ir = ${rr}% ≥ ${P.slope}%`: why?`Id/Ir = ${rr}% ≥ ${P.slope}%。ただし${WHY[why]}`:`Id/Ir = ${rr}%`,
+      readout:[['差電流 Id',d.Id.toFixed(2)],['通過電流 Ir',d.Ir.toFixed(2)],['比率 Id/Ir',rr+' %'],['差電流の第 2 調波 ÷ 基本波',on&&d.Id>0.05?(d.h2*100).toFixed(0)+' %':'—'],['I1 と I2 の位相差（0° = 両方流れ込む）',!on?'—':d.I2<0.5?'I2 ほぼ 0':d.ang.toFixed(0)+'°'],['差動瞬時要素 Id ／ 整定',!ui?'なし':on?`${d.Id.toFixed(1)} ／ ${P.uis}`:`— ／ ${P.uis}`]],
       holdText: S.x.blk ? `外部事故。CT2 の飽和で差電流が比率を超えたが、${blkTxt}（正しい）` : '外部事故。CT2 の飽和で差電流は出たが、通過電流に比べて小さいので抑制される（正しい）',
       missText: P.loc==='evo' ? '0.1 s 後に区間の中で事故が起きたのに動かない。外部事故と判定したあと止めっぱなしにしたので、移行事故を見逃した。位相比較があれば、I2 が消えたところで止めを外せる' : ''}; },
   zoom(c,S,P){ diffZoom(c,S,P,P.mult,true); },
   missPill:'不動作（見逃し）',
-  misText:'直流分で CT2 が飽和して差電流が増え、Id / Ir が設定比率を超える時間が続いて、外部事故で不要動作した。比率の整定を見直すか、「飽和を見つけて止める機能」を入れる',
-  tripText:(S,m,P)=> P.loc==='evo' ? `移行事故：0.1 s 後に区間の中で起きた事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放${P.sd==='ef'||P.sd==='both'?'（I2 が消えて位相比較が区間内を示し、止めを外した）':''}`
+  misText:(S,P)=> S.tripEl===1 ? `差動瞬時要素が外部事故で動いた。CT2 の飽和で出た差電流が、瞬時要素の整定 ${P.uis} 倍を超えた。瞬時要素は止める機能を通らないので、整定は外部事故で出うる差電流（と励磁突入電流）より上にする`
+    : '直流分で CT2 が飽和して差電流が増え、Id / Ir が設定比率を超える時間が続いて、外部事故で不要動作した。比率の整定を見直すか、「飽和を見つけて止める機能」を入れる',
+  tripText:(S,m,P)=> S.tripEl===1 ? `差動瞬時要素が ${S.tTrip.toFixed(3)} s で動作し（差電流 ${m.Id.toFixed(1)} ≥ ${P.uis}）、両側の遮断器を開放${m.blk?'。このとき比率要素は、第 2 調波で止められていた':''}`
+    : P.loc==='in' && (P.sd==='h2'||P.sd==='both') && ctRun(P,P.mult).sat1>0 && S.tTrip>0.08 ? `内部事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放（CT1 が飽和して差電流に第 2 調波が出て、そのあいだ止めたので遅れた）`
+    : P.loc==='evo' ? `移行事故：0.1 s 後に区間の中で起きた事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放${P.sd==='ef'||P.sd==='both'?'（I2 が消えて位相比較が区間内を示し、止めを外した）':''}`
     : `内部事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放${(P.sd==='h2'||P.sd==='both')&&S.tTrip>0.0525?'（事故の直後は第 2 調波が多く見えて止めたぶん、遅れた）':''}`,
   scene(S,P){ diffScene(S,P,true); },
-  chart(c,S,P){ const m=S.m, mx=Math.max(4,P.mult*1.15); const f=H.frame(c,BOX,[0,mx],[0,mx],{xt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),yt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),xl:'通過電流 Ir = (I1 + I2)/2',yl:'差電流 Id'});
+  chart(c,S,P){ const m=S.m, ui=P.ui!=='off', mx=Math.max(4,P.mult*1.15,ui&&P.uis<=P.mult*1.6?P.uis*1.12:0); const f=H.frame(c,BOX,[0,mx],[0,mx],{xt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),yt:[0,mx/4,mx/2,mx*3/4,mx].map(v=>+v.toFixed(1)),xl:'通過電流 Ir = (I1 + I2)/2',yl:'差電流 Id'});
     const k=P.slope/100, xb=0.3/k; c.save(); c.beginPath(); c.rect(BOX.x,BOX.y,BOX.w,BOX.h); c.clip();
     c.fillStyle=rgba(C.target,0.12); c.beginPath(); c.moveTo(f.X(0),f.Y(0.3)); c.lineTo(f.X(xb),f.Y(0.3)); c.lineTo(f.X(mx),f.Y(k*mx)); c.lineTo(f.X(mx),f.Y(mx)); c.lineTo(f.X(0),f.Y(mx)); c.closePath(); c.fill();
     c.strokeStyle=C.target; c.lineWidth=2.5; c.beginPath(); c.moveTo(f.X(0),f.Y(0.3)); c.lineTo(f.X(xb),f.Y(0.3)); c.lineTo(f.X(mx),f.Y(k*mx)); c.stroke();
+    /* 差動瞬時要素：この線より上は、比率にも止める機能にも関係なく動く */
+    if(ui && P.uis<mx){ c.fillStyle=rgba(C.fault,0.09); c.fillRect(f.X(0),f.Y(mx),f.X(mx)-f.X(0),f.Y(P.uis)-f.Y(mx)); c.strokeStyle=C.fault; c.lineWidth=1.6; c.setLineDash([6,3]); c.beginPath(); c.moveTo(f.X(0),f.Y(P.uis)); c.lineTo(f.X(mx),f.Y(P.uis)); c.stroke(); c.setLineDash([]); }
     const tr=S.x.trail||[]; c.strokeStyle=rgba(C.amber,0.7); c.lineWidth=1.5; c.beginPath(); tr.forEach((p,i)=>{ const x=f.X(p[0]),y=f.Y(p[1]); i?c.lineTo(x,y):c.moveTo(x,y); }); c.stroke(); c.restore();
     H.dot(c,f.X(clamp(m.Ir,0,mx)),f.Y(clamp(m.Id,0,mx)), m.pick?C.fault:m.blk?C.amber:C.s1, 6);
     H.text(c,f.X(mx*0.25),f.Y(mx*0.82),'動作域',{col:C.target,font:`700 13px ${SANS}`});
-    if(m.blk) H.text(c,f.X(0)+10,f.Y(mx*0.82)+22, m.why==='h2'?`点は動作域。第 2 調波 ${(m.h2*100).toFixed(0)} % で止めている`:'点は動作域。外部事故と判定して止めている',{al:'left',col:C.amber,font:`700 11px ${SANS}`});
+    const lineIn=ui&&P.uis<mx, msgY=lineIn?f.Y(P.uis)+16:f.Y(mx*0.82)+22;   /* 瞬時要素の線があれば、そのすぐ下に書く */
+    if(lineIn) H.text(c,f.X(mx)-6,f.Y(P.uis)-9,`差動瞬時要素 ${P.uis} 倍`,{al:'right',col:C.fault,font:`700 11px ${SANS}`});
+    else if(ui) H.text(c,f.X(mx)-6,f.Y(mx)+12,`差動瞬時要素 ${P.uis} 倍は図の上の外`,{al:'right',col:C.fault,font:`600 10.5px ${SANS}`});
+    if(m.pickI) H.text(c,f.X(0)+10,msgY,'点は瞬時要素の線より上。抑制も止めもなしに動く',{al:'left',col:C.fault,font:`700 11px ${SANS}`});
+    else if(m.blk) H.text(c,f.X(0)+10,msgY, m.why==='h2'?`点は動作域。第 2 調波 ${(m.h2*100).toFixed(0)} % で止めている`:'点は動作域。外部事故と判定して止めている',{al:'left',col:C.amber,font:`700 11px ${SANS}`});
     H.text(c,f.X(mx*0.72),f.Y(k*mx*0.72)+30,'抑制域（不動作）',{col:C.muted,font:`700 12px ${SANS}`});
     H.text(c,f.X(mx)-6,f.Y(k*mx)-12,`比率 ${P.slope}%`,{al:'right',col:C.target,font:`600 11px ${SANS}`});
   },
@@ -1544,22 +1571,26 @@ dfr:{
 rdfr:{
   presets:[{l:'外部事故＋CT2 の飽和（余裕 130 倍）',p:{loc:'ext',ks:130,sd:'none'},k:'hold'},{l:'内部事故',p:{loc:'in',sd:'none'},k:'ok'},{l:'外部事故＋強い飽和（余裕 60 倍）',p:{loc:'ext',ks:60,sd:'none'},k:'bad'},
     {l:'強い飽和・第 2 調波で止める',p:{loc:'ext',ks:60,sd:'h2'},k:'hold'},{l:'強い飽和・外部事故の判定',p:{loc:'ext',ks:60,sd:'ef'},k:'hold'},{l:'内部事故・第 2 調波で止める',p:{loc:'in',sd:'h2'},k:'ok',t:'0.01 s 遅れる'},
-    {l:'移行事故・外部事故の判定',p:{loc:'evo',ks:60,sd:'ef'},k:'ok'},{l:'移行事故・位相比較なし',p:{loc:'evo',ks:60,sd:'efn'},k:'bad',t:'見逃す'}],
+    {l:'移行事故・外部事故の判定',p:{loc:'evo',ks:60,sd:'ef'},k:'ok'},{l:'移行事故・位相比較なし',p:{loc:'evo',ks:60,sd:'efn'},k:'bad',t:'見逃す'},
+    {l:'内部事故・CT1 も飽和・瞬時要素なし',p:{loc:'in',ks1:60,mult:12,sd:'h2',ui:'off'},k:'ok',t:'0.19 s に遅れる'},{l:'同じ条件・差動瞬時要素あり',p:{loc:'in',ks1:60,mult:12,sd:'h2',ui:'on'},k:'ok',t:'0.02 s で切る'},
+    {l:'強い飽和・瞬時要素の整定 5 倍',p:{loc:'ext',ks:60,sd:'both',uis:5},k:'bad',t:'瞬時要素が不要動作'}],
   notes(ph,S,P,m){ const evoIn=P.loc==='evo'&&S.te>=CT_EVO; return ({
     normal:[350,81,'差電流で動かそうとする力と、通過電流で抑える力を比べている'],
-    fault: m.blk ? [350,26, m.why==='h2'?`差電流は比率を超えたが、第 2 調波が ${(m.h2*100).toFixed(0)} % あるので飽和とみて止めている`:P.sd==='efn'?'外部事故と判定したので、差電流が出ても止めている':`外部事故と判定。I1 と I2 が逆向き（${m.ang.toFixed(0)}°）なので止めている`]
+    fault: m.blk ? [350,26, m.why==='h2'?(P.loc==='in'?`CT1 が飽和して、差電流に第 2 調波が ${(m.h2*100).toFixed(0)} % 出た。内部事故なのに止めている`:`差電流は比率を超えたが、第 2 調波が ${(m.h2*100).toFixed(0)} % あるので飽和とみて止めている`):P.sd==='efn'?'外部事故と判定したので、差電流が出ても止めている':`外部事故と判定。I1 と I2 が逆向き（${m.ang.toFixed(0)}°）なので止めている`]
       : P.loc==='in'?[300,206,'変圧器の中で事故'] : evoIn?[300,206,'0.1 s 後、変圧器の中でも事故が起きた'] : [620,206,'外部事故。直流分で CT2 が飽和すると、差電流が出る'],
-    pick:[350,26, evoIn&&(P.sd==='ef'||P.sd==='both')&&S.x.blk ? 'I2 が消えて位相比較が区間内を示したので、止めを外した' : '差電流が、通過電流に比率を掛けた値を超えた'],
+    pick:[350,26, m.pickI ? `差電流 ${m.Id.toFixed(1)} が瞬時要素の整定 ${P.uis} を超えた。止める機能を通らずに動く` : evoIn&&(P.sd==='ef'||P.sd==='both')&&S.x.blk ? 'I2 が消えて位相比較が区間内を示したので、止めを外した' : '差電流が、通過電流に比率を掛けた値を超えた'],
     trip:[350,26,'動作。両側の遮断器を引き外す'],
     open:[350,180,'変圧器を両側から切り離した'],
-    misop:[350,180,'CT2 の飽和で出た差電流が、通過電流 × 比率を超えて、外部事故で動いてしまった'],
+    misop:[350,180, S.tripEl===1 ? 'CT2 の飽和で出た差電流が瞬時要素の整定を超えた。瞬時要素は止める機能を通らないので、外部事故で動いてしまった' : 'CT2 の飽和で出た差電流が、通過電流 × 比率を超えて、外部事故で動いてしまった'],
     hold:[276,53, P.loc==='evo' ? '外部事故と判定したまま止めっぱなし。区間の中の事故を見逃している' : S.x.blk ? '差電流は比率を超えたが、飽和とみて止めたので動かない' : '差電流は出たが、抑制コイルの抑える力のほうが大きいので動かない']})[ph]; },
   logic(S,P,m){ const thr=P.slope/100*m.Ir, act=S.pick||S.tripped, sd=P.sd||'none', on=S.ev&&!S.open;
     const conds=[['Id ≥ 最小動作値 0.3',m.Id.toFixed(2),m.Id>=0.3],[`Id ≥ ${P.slope}% × Ir`,`${m.Id.toFixed(2)} ／ ${thr.toFixed(2)}`,m.Id>=thr]];
     if(sd==='h2'||sd==='both') conds.push([`第 2 調波 < ${P.h2s} %（飽和・突入でない）`, on&&m.Id>0.05?(m.h2*100).toFixed(0)+' %':'—', !(on&&m.h2>=P.h2s/100)]);
     if(sd==='ef'||sd==='both') conds.push(['外部事故の判定なし、または位相比較で区間内', !on?'—':!m.ef?'判定なし':m.inside?`区間内（${m.I2<0.5?'I2 ほぼ 0':m.ang.toFixed(0)+'°'}）`:`外部事故・逆向き ${m.ang.toFixed(0)}°`, !(on&&m.ef&&!m.inside)]);
     if(sd==='efn') conds.push(['外部事故の判定なし', !on?'—':m.ef?'外部事故と判定':'判定なし', !(on&&m.ef)]);
-    return {paths:[{conds, tl:'瞬時', tv:'0.05 s', prog:act?PR(S):0}], out:'トリップ', cb:'52-1・52-2 開'}; },
+    const paths=[{conds, tl:'比率要素', tv:'0.05 s', d:0.05, prog:EP(S,0)}];
+    if(P.ui!=='off') paths.push({conds:[[`Id ≥ ${P.uis}（抑制も止めもなし）`, on?m.Id.toFixed(2):'—', !!m.pickI]], tl:'瞬時要素', tv:UI_T.toFixed(2)+' s', d:UI_T, prog:EP(S,1)});
+    return {paths, out:'トリップ', cb:'52-1・52-2 開'}; },
 },
 dr:{
   presets:[{l:'50 %（第 1 段）',p:{loc:50,rf:0},k:'ok'},{l:'100 %（第 2 段）',p:{loc:100,rf:0},k:'ok'},{l:'50 %・事故抵抗 0.5',p:{loc:50,rf:0.5},k:'ok',t:'アンダーリーチ'},{l:'110 %（後備）',p:{loc:110,rf:0},k:'ok',t:'後備動作'},{l:'150 %（範囲外）',p:{loc:150,rf:0},k:'hold'}],
@@ -1679,7 +1710,7 @@ function waitT(){ return typeof R.wait==='function'? R.wait(P) : 2.5; }
 function phase(){ if(!S.ev) return 'normal'; if(S.tripped) return S.open ? (S.shouldAtTrip?'open':'misop') : 'trip'; if(S.pick) return 'pick'; if(S.te>waitT()) return 'hold'; return 'fault'; }
 function verdict(){ const m=S.m;
   if(!S.ev) return S.prePick ? ['bad','平常時に動作域','事故の前から動作条件を満たしている。このままでは平常時に動いてしまうので、整定や検出方式を見直す'] : ['', '平常', '平常運転。計測値は整定値の手前にある'];
-  if(S.tripped) return S.shouldAtTrip ? ['ok', R.tripPill||'正動作', R.tripText?R.tripText(S,S.mAtTrip,P):''] : ['bad','不要動作', R.misText||''];
+  if(S.tripped) return S.shouldAtTrip ? ['ok', R.tripPill||'正動作', R.tripText?R.tripText(S,S.mAtTrip,P):''] : ['bad','不要動作', (typeof R.misText==='function'?R.misText(S,P):R.misText)||''];
   if(S.pick){ const rem=remT(); return ['run','時限計測中', `${m.detect}　動作まで あと ${rem>99?'∞':rem.toFixed(2)+' s'}`]; }
   if(S.te>waitT()){ const pu=purpose(); return pu==='trip' ? ['bad', R.missPill||'不動作（検出できない）', m.missText||m.holdText||''] : pu==='notrip' ? ['hold','不動作（正しい）', m.holdText||''] : ['hold','不動作', m.holdText||'']; }
   return ['', '判定中', `事故発生。${m.detect}`];
@@ -1705,7 +1736,8 @@ const KTXT={ok:'正動作',hold:'動かない',bad:'不要動作'};
 let roSlots=[];
 const atTrip = () => !!(S.tripped && S.mAtTrip && !R.liveAfterTrip);
 function syncInputs(){ R.params.forEach(p=>{ const el=$(`p-${R.id}-${p.id}`); if(!el) return; el.value=P[p.id]; const o=$(el.id+'-o'); if(o) o.textContent=p.fmt(P[p.id]); }); paintPresets(); }
-function paintPresets(){ $('presets').querySelectorAll('.preset').forEach(b=>{ const pr=R.presets[+b.dataset.i]; b.setAttribute('aria-pressed', Object.entries(pr.p).every(([k,v])=>String(P[k])===String(v))); }); }
+function paintPresets(){ const ps=R.presets||[], hit=ps.map(pr=>Object.entries(pr.p).every(([k,v])=>String(P[k])===String(v))), most=Math.max(0,...ps.map((pr,i)=>hit[i]?Object.keys(pr.p).length:0));
+  $('presets').querySelectorAll('.preset').forEach(b=>{ const i=+b.dataset.i; b.setAttribute('aria-pressed', hit[i] && Object.keys(ps[i].p).length===most); }); }
 function buildLogic(){ const L=R.logic(S,P,S.m), multi=L.paths.length>1; if(typeof eqLive==='function') eqLive();
   $('logic').previousElementSibling.textContent = '継電器の中の判定' + (L.title?`（${L.title}）`:'');
   $('logic').innerHTML = `<div class="paths">${L.paths.map((p,i)=>`<div class="path"><div class="conds">${p.conds.map(c=>`<div class="cond"><span>${c[0]}</span><b>—</b></div>`).join('')}</div><span class="wire"></span>${p.conds.length>1?'<span class="gate">AND</span><span class="wire"></span>':''}<div class="timer"><i></i><span>${p.tl}</span><b>—</b></div><span class="wire"></span></div>`).join('')}</div>`
@@ -1927,9 +1959,10 @@ rdfr:{one:{see:'差電流と通過電流の比', judge:'Id ≥ 40 % × Ir', aim:
   aim:['DFR と同じく、区間の中の事故だけを瞬時に切る','外部事故の大電流で CT が誤差を出しても動かないよう、通過電流が大きいほど、動作に必要な差電流を大きくする','そのぶん、小さな内部事故への感度を上げられる'],
   phys:{t:'外部事故では、大きな電流が区間を通り抜ける。事故電流に直流分が重なると、片方の CT の鉄心が飽和して二次電流が欠ける。本当は 0 のはずの差電流が、事故の数 ms 後から直流分が減るまで（数十〜百数十 ms）現れる。',
     eq:['外部事故の見掛けの差電流：'+xv('I')+'<sub>d</sub> ≈ '+xv('ε')+' × '+xv('I')+'　（'+xv('ε')+'：CT2 の基本波が欠けた割合）',xv('I')+'<sub>d</sub> / '+xv('I')+'<sub>r</sub> = '+xv('ε')+' / (1 − '+xv('ε')+' / 2)']},
-  judge:{t:'差電流と通過電流（抑制電流）の比を見る。比が設定比率（40 %）以上で、差電流が最小動作値以上なら動く。',
+  judge:{t:'差電流と通過電流（抑制電流）の比を見る。比が設定比率（40 %）以上で、差電流が最小動作値以上なら動く。差電流がとても大きければ（差動瞬時要素）、比率にも止める機能にも関係なく動く。',
     eq:[xv('I')+'<sub>r</sub> = (|'+xv('I')+'<sub>1</sub>| + |'+xv('I')+'<sub>2</sub>|) / 2',xv('I')+'<sub>d</sub> ≥ 0.4 × '+xv('I')+'<sub>r</sub> かつ '+xv('I')+'<sub>d</sub> ≥ 0.3 なら瞬時に動作','比率 40 % なら、CT2 の基本波がおよそ 33 % 欠けると不要動作の境目',
-      '飽和を見つけて止める：'+xv('I')+'<sub>d</sub> の第 2 調波 ÷ 基本波 ≥ 15 %、または「事故の検出から 2 ms、'+xv('I')+'<sub>d</sub> < 0.2 × '+xv('I')+'<sub>r</sub>（外部事故）」で I1 と I2 が逆向き（位相差 90° 超）のあいだ']},
+      '飽和を見つけて止める：'+xv('I')+'<sub>d</sub> の第 2 調波 ÷ 基本波 ≥ 15 %、または「事故の検出から 2 ms、'+xv('I')+'<sub>d</sub> < 0.2 × '+xv('I')+'<sub>r</sub>（外部事故）」で I1 と I2 が逆向き（位相差 90° 超）のあいだ',
+      '差動瞬時要素：'+xv('I')+'<sub>d</sub> ≥ 10（定格比）なら、比率にも止める機能にも関係なく 0.01 s で動作']},
   after:{t:'DFR と同じ。両側の遮断器が開いて変圧器を切り離し、再閉路はしない。負荷はほかの変圧器へ切り替えて送電を戻す。',
     tl:[['内部事故',0,'ev'],['RDFR 動作 約 0.05 s',0.055,'relay'],['両側の遮断器が開く 約 0.1 s',0.105,'cb'],['ほかの変圧器へ切り替え 数分〜',600,'back'],['変圧器の修理 数週間〜数か月',60*86400,'rest']]}},
 dr:{one:{see:'インピーダンス（V ÷ I）', judge:'Z が Z1 の円の中 → 瞬時', aim:'距離で動作時間を変える', back:'送電線は約 1 s で再閉路'},
@@ -3401,7 +3434,7 @@ rdfr:{svg(){ const X=gNx(0,10), Y=gNy(0,6), bd=I=>Math.max(0.3, I<=5?0.4*I:2+0.8
     {t:'比率の斜線', r:[['avoid','CT の誤差は通過電流にほぼ比例して増える。そこで整定も通過電流に比例して上げる（Id ≥ 比率 × Ir）。比率 40 % なら、CT 誤差がおよそ 33 % までは外部事故で動かない。']]},
     {t:'2 段目の急な斜線', r:[['avoid','さらに大きな通過電流では CT が飽和して誤差が急に増えるので、傾きを急にする。']]},
     {t:'動作域', r:[['equip','区間の中の事故は差電流が大きく、斜線より上に出る。瞬時に切る。']]},
-    {t:'差動瞬時要素', r:[['equip','内部の大事故で CT が飽和すると、比率要素の判定が遅れることがある。差電流がとても大きければ、比率に関係なくすぐ動く。']]},
+    {t:'差動瞬時要素', r:[['equip','内部の大事故で CT が飽和すると、差電流に第 2 調波が出て、比率要素が止められて遅れる。差電流がとても大きければ、比率にも止める機能にも関係なくすぐ動く。整定は、外部事故で出うる差電流より上に置く。']]},
     {t:'斜線の下に入る内部事故', r:[['phys','巻線の層間短絡や中性点の近くの地絡は差電流が小さく、比率を上げるほど見えにくい。'],['other','ブッフホルツ継電器（96）が受け持つ。接地された Y 巻線の中性点に近い地絡には、地絡専用の差動（REF、中性点の CT が要る）を使う。']]}]},
 dr:{svg(){ const ox=130, oy=185, k=85, A=75, P=(m,a=A)=>gPol(ox,oy,m*k,a), circ=d=>{ const [cx,cy]=P(d/2); return `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(d/2*k)}"`; };
     let s=gP([...gArc(ox,oy,182,-25,25),...gArc(ox,oy,222,-25,25).reverse()],'avoid')+gR(gPL-12,oy,ox,gPB+6,'coord')+gR(176,132,248,166,'phys');
@@ -3490,6 +3523,8 @@ rdfr:{combo:'T87（主保護）＋ TP51・TS51（後備）＋ 96（ブッフホ�
   ['small','斜線の下に入る内部事故','比率を上げるほど外部事故に強くなるが、内部の小さな事故（層間短絡、中性点の近くの地絡）が見えにくくなる。','96（ブッフホルツ）。接地された Y 巻線の中性点に近い地絡には、地絡専用の差動（REF）。'],
   ['false','CT 誤差が比率の限度を越える','比率 40 % なら、CT 誤差がおよそ 33 % を超えると外部事故でも動く（このシミュレータで確かめられる）。','飽和しにくい CT を選ぶ、2 段の比率、飽和を見つけて止める機能（第 2 調波、外部事故の判定）。'],
   ['false','事故の直後に CT が飽和する','残留磁束が大きいと、事故から 2 ms もたたずに飽和する。差電流が通過電流と同時に出るので、外部事故と判定できない。','第 2 調波と組み合わせる。'],
+  ['device','内部事故で CT が飽和し、第 2 調波で止まる','区間の中の大事故で CT1 が飽和すると、差電流に第 2 調波が出る。第 2 調波で止める方式では、そのあいだ止められて動作が遅れる（このシミュレータで 0.19 s）。','差動瞬時要素（差電流がとても大きければ止めずに動く）。外部事故の判定は、内部事故では差電流がすぐ出るので止めない。'],
+  ['false','差動瞬時要素の整定が低い','差動瞬時要素は止める機能を通らない。外部事故で CT が強く飽和して出た差電流が整定を超えると、そのまま動く（このシミュレータで確かめられる）。','整定を、外部事故で出うる差電流と励磁突入電流より上に置く。飽和しにくい CT を選ぶ。'],
   ['device','止めたまま区間の中でも事故（移行事故）','外部事故と判定して止めているあいだに区間の中で事故が起きると、止めっぱなしでは動けない（このシミュレータで確かめられる）。','位相比較：I1 と I2 が両方とも区間へ流れ込む向き（または片方がほぼ 0）になったら止めを外す。'],
   ['device','CT の結線・タップの設定ミス','結線や変圧器のタップ、Δ-Y の位相補正を誤ると、負荷電流だけで差電流が出る。','送電前の負荷試験で、差電流がほぼ 0 か確かめる。']]},
 dr:{combo:'送電線では、電流差動か距離継電器の第 1 段を主保護に、第 2・第 3 段を後備にする。地絡方向継電器も重ね、再閉路と組む。', col:'dr', items:[
@@ -3598,6 +3633,16 @@ if(h0==='gaps') setView('gaps');
    n はシミュレータの計算（measure）と同じ式で出す */
 const qv=(s,sub)=>'<i>'+s+'</i>'+(sub?'<sub>'+sub+'</sub>':'');
 const q1=v=>(+v).toFixed(1), q2=v=>(+v).toFixed(2), qd=r=>(r*180/Math.PI).toFixed(0)+'°';
+/* 差動：CT の計算（ctRun）から、key がいちばん大きい時刻の値を拾う（移行事故は 0.1 s までの外部事故の部分）。
+   key がどこでもほぼ 0 なら 1 サイクル後の値。qAt は決まった時刻の値（内部事故の 1 サイクル後など） */
+const qRatio=d=>d.Id/Math.max(d.Ir,1e-6);
+function qAt(P,M,u){ const r=ctRun(P,M); return {...diffAt(r,u),u,r}; }
+function qPeak(P,M,key){ const r=ctRun(P,M), uEnd=P.loc==='evo'?CT_EVO-0.001:0.25; let b=null;
+  for(let u=0;u<=uEnd+1e-9;u+=0.001){ const d=diffAt(r,u); if(!b||key(d)>key(b)) b={...d,u}; }
+  if(key(b)<1e-3) b={...diffAt(r,0.03),u:0.03}; b.r=r; return b; }
+/* 条件 f が続いた最長の時間（ms） */
+function qRun(r,uEnd,f){ let n=0,mx=0; for(let u=0;u<=uEnd+1e-9;u+=0.001){ if(f(diffAt(r,u))){ n++; mx=Math.max(mx,n); } else n=0; } return mx; }
+const qMs=u=>Math.round(u*1000)+' ms';
 const EQX={
 ocr:{phys:[
   {s:[[qv('I','s'),'短絡電流（A）'],['%'+qv('Z'),'電源から事故点までのインピーダンスを、基準容量に対する % で表したもの'],[qv('I','n'),'基準電流＝基準容量 ÷（√3 × 電圧）。10 MVA・6.6 kV で 875 A']],
@@ -3673,24 +3718,39 @@ dfr:{phys:[
   {s:[[qv('I','1'),'区間に入る電流'],[qv('I','2'),'区間から出る電流'],[qv('I','d'),'差電流']],
    w:'区間の外の事故では、電流は区間を通り抜けるだけなので、入る量と出る量が同じ。'},
   {w:'区間の中で事故が起きると、入った電流の一部（または全部）が事故点へ流れ、出ていかない。その分が差電流になる。',
-   n:P=>P.loc==='in'?`内部事故：I1 = 6.00、I2 = 0.15 → Id = 5.85`:`外部事故：I1 = 8.00、I2 = 8.00 × (1 − ${P.cterr} %) = ${q2(8*(1-P.cterr/100))} → Id = ${q2(8*P.cterr/100)}（CT 誤差の分）`}],
+   n:P=>{ const d=P.loc==='in'?qAt(P,6,0.03):qPeak(P,8,x=>x.Id); return P.loc==='in' ? `内部事故（1 サイクル後）：I1 = ${q2(d.I1)}、I2 = ${q2(d.I2)}（負荷電流）→ Id = ${q2(d.Id)}`
+     : d.Id<0.01 ? `外部事故：I1 = ${q2(d.I1)}、I2 = ${q2(d.I2)} → Id = ${q2(d.Id)}（CT2 は飽和しない）` : `外部事故で CT2 がいちばん欠けたとき（事故から ${qMs(d.u)}）：I1 = ${q2(d.I1)}、I2 = ${q2(d.I2)} → Id = ${q2(d.Id)}（飽和で欠けた分）`; }}],
  judge:[
   {s:[['0.3','整定値（定格の何倍か、スライダ）。差電流のしきい値']],
-   n:P=>{ const Id=P.loc==='in'?5.85:8*P.cterr/100; return `Id = ${q2(Id)} ${Id>=P.set?'≥':'<'} ${q2(P.set)} → ${Id>=P.set?(P.loc==='in'?'瞬時に動作（正しい）':'動いてしまう（不要動作）'):'動かない'}`; }}]},
+   n:P=>{ const d=qPeak(P,P.loc==='in'?6:8,x=>x.Id), run=qRun(d.r,0.25,x=>x.Id>=P.set);
+     return `差電流の最大 = ${q2(d.Id)} ${d.Id>=P.set?'≥':'<'} ${q2(P.set)}` + (d.Id<P.set ? ' → 動かない' : run>=50 ? ` で 0.05 s 以上続く → ${P.loc==='in'?'動作（正しい）':'動いてしまう（不要動作）'}` : `。超えた時間は最長 ${run} ms → 0.05 s に届かず動かない`); }}]},
 rdfr:{phys:[
-  {s:[['ε','CT 誤差（スライダ）。2 つの CT の測り方の差'],[qv('I'),'通過電流']],
-   w:'外部事故でも、CT の誤差の分だけ見かけの差電流が出る。電流が大きいほど、この差も大きい。'},
+  {s:[['ε','CT2 の基本波が欠けた割合。飽和の強さ（余裕・直流分・事故電流）で決まる'],[qv('I'),'通過電流']],
+   w:'外部事故でも、CT2 が飽和して欠けた分だけ見かけの差電流が出る。電流が大きいほど、この差も大きい。',
+   n:P=>{ if(P.loc==='in') return '内部事故では CT2 に負荷電流しか流れない（この式は外部事故のとき）'; const d=qPeak(P,P.mult,qRatio), e=1-d.I2/Math.max(d.I1,1e-6);
+     return d.Id<0.01 ? 'CT2 は飽和しない → ε = 0、Id = 0' : `いちばん欠けたとき（事故から ${qMs(d.u)}）：I1 = ${q2(d.I1)}、I2 = ${q2(d.I2)} → ε = 1 − I2 / I1 = ${(e*100).toFixed(0)} %、Id（ベクトル差）= ${q2(d.Id)}`; }},
   {w:'上の差電流を通過電流 Ir で割ったもの。比率の整定がこれより大きければ、外部事故では動かない。',
-   n:P=>{ const e=P.cterr/100, r=e/(1-e/2); return `ε = ${P.cterr} % → Id / Ir = ${(r*100).toFixed(0)} %（比率 ${P.slope} % ${r*100<P.slope?'より小さい → 外部事故で動かない':'以上 → 外部事故で動いてしまう'}）`; }}],
+   n:P=>{ if(P.loc==='in') return '内部事故では I2 がほぼ 0 なので、Id / Ir は 200 % 近くになる'; const d=qPeak(P,P.mult,qRatio), r=qRatio(d)*100, run=qRun(d.r,P.loc==='evo'?CT_EVO-0.001:0.25,x=>x.Id>=Math.max(0.3,P.slope/100*x.Ir));
+     return `いちばん大きいとき Id / Ir = ${r.toFixed(0)} %（比率 ${P.slope} % ${r<P.slope?'より小さい → 外部事故で動かない':`以上。超えた時間は最長 ${run} ms → ${run>=50?'止める機能がなければ動いてしまう':'0.05 s に届かず動かない'}`}）`; }}],
  judge:[
   {s:[[qv('I','r'),'通過電流（抑制電流）。入る電流と出る電流の平均']],
    w:'差電流と比べる「ものさし」。大きな電流が通り抜けているときほど、整定を上げる。'},
   {s:[['0.4','比率（スライダ、40 %）。右の図の斜線の傾き'],['0.3','最小動作値。小さな電流での誤差を見送る']],
    w:'差電流が通過電流の 40 % を超え、しかも最小動作値も超えたら動く。',
-   n:P=>{ const a=P.mult, b=P.loc==='in'?0.15:P.mult*(1-P.cterr/100), Id=Math.abs(a-b), Ir=(a+b)/2, thr=Math.max(0.3,P.slope/100*Ir);
-     return `I1 = ${q2(a)}、I2 = ${q2(b)} → Id = ${q2(Id)}、Ir = ${q2(Ir)}\nしきい値 = max(0.3, ${P.slope / 100} × ${q2(Ir)}) = ${q2(thr)} → ${Id>=thr?'動作':'動かない'}`; }},
+   n:P=>{ const d=P.loc==='in'?qAt(P,P.mult,0.03):qPeak(P,P.mult,qRatio), thr=Math.max(0.3,P.slope/100*d.Ir);
+     return `${P.loc==='in'?'内部事故（1 サイクル後）':`Id / Ir がいちばん大きいとき（事故から ${qMs(d.u)}）`}：I1 = ${q2(d.I1)}、I2 = ${q2(d.I2)} → Id = ${q2(d.Id)}、Ir = ${q2(d.Ir)}\nしきい値 = max(0.3, ${P.slope / 100} × ${q2(d.Ir)}) = ${q2(thr)} → ${d.Id>=thr?'動作域':'抑制域（動かない）'}`; }},
   {w:'ε / (1 − ε / 2) = 0.4 を解くと ε ≈ 0.33。比率 k なら、境目の CT 誤差は k / (1 + k / 2)。',
-   n:P=>{ const k=P.slope/100; return `比率 ${P.slope} % → 境目の CT 誤差 = ${(k/(1+k/2)*100).toFixed(0)} %`; }}]},
+   n:P=>{ const k=P.slope/100; return `比率 ${P.slope} % → 境目の CT 誤差 = ${(k/(1+k/2)*100).toFixed(0)} %`; }},
+  {n:P=>{ const sd=P.sd||'none'; if(sd==='none') return '「飽和を見つけて止める機能」は「なし」'; const d=P.loc==='in'?qAt(P,P.mult,0.03):qPeak(P,P.mult,qRatio), r=d.r;
+     /* 比率要素が動くまで（止めずに比率を超えた時間が 0.05 s 続くまで）に、止めた時間を数える */
+     let nb=0, run=0; for(let u=0;u<=0.25+1e-9&&run<50;u+=0.001){ const x=diffAt(r,u), o=x.Id>=Math.max(0.3,P.slope/100*x.Ir), b=o&&!!satBlock(P,x); if(b) nb++; run = o&&!b ? run+1 : 0; }
+     return `${P.loc==='in'?'内部事故（1 サイクル後）':`Id / Ir がいちばん大きいとき（事故から ${qMs(d.u)}）`}：第 2 調波 = ${(d.h2*100).toFixed(0)} %（整定 ${P.h2s} %）`
+       + (sd==='h2' ? '' : r.ef!=null ? `、外部事故と判定（${(r.ef*1000).toFixed(1)} ms）、位相差 ${d.ang.toFixed(0)}°` : '、外部事故の判定なし')
+       + `\n${run>=50?'比率要素が動くまでに':'事故から 0.25 s までに'}止めた時間は計 ${nb} ms`; }},
+  {s:[['10','差動瞬時要素の整定（スライダ、定格の何倍か）'],['0.01 s','動作時間']],
+   w:'差電流がこれほど大きいのは区間の中の大事故だけ、とみて、比率の抑制も止める機能も通さずに動かす。第 2 調波で止められている内部事故も切れる。整定は、外部事故で CT が飽和して出る差電流と、励磁突入電流より上に置く。',
+   n:P=>{ if(P.ui==='off') return '差動瞬時要素は「なし」'; const d=qPeak(P,P.mult,x=>x.Id), run=qRun(d.r,0.25,x=>x.Id>=P.uis);
+     return `差電流の最大 = ${q2(d.Id)}（事故から ${qMs(d.u)}）${d.Id>=P.uis?'≥':'<'} 整定 ${P.uis}` + (d.Id<P.uis ? ' → 瞬時要素は動かない' : run>=10 ? ` で 0.01 s 以上続く → ${P.loc==='ext'?'動いてしまう（不要動作）':'動作'}` : `。超えた時間は最長 ${run} ms → 0.01 s に届かず動かない`); }}]},
 dr:{phys:[
   {s:[[qv('z'),'線路の単位長さあたりのインピーダンス'],[qv('x'),'事故点までの距離'],[qv('I'),'事故電流']],
    w:'事故点までの線路での電圧降下が、継電器のところの電圧になる。事故点が遠いほど V は大きい。'},
