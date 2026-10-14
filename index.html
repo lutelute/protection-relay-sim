@@ -363,7 +363,8 @@ footer{font-size:12px;color:var(--muted)}
       <canvas id="chart" width="480" height="400" aria-label="動作特性図"></canvas>
       <div class="readout" id="readout"></div></div>
     <div class="panel"><div class="ph"><b>事故記録（オシログラフ）</b><span id="tsub"></span></div>
-      <canvas id="trend" width="480" height="240" aria-label="計測値とトリップ信号の時間推移。押すとその時刻へ戻る" title="押すと、その時刻へ戻って止まる" style="cursor:pointer"></canvas></div>
+      <canvas id="trend" width="480" height="240" aria-label="計測値とトリップ信号の時間推移。押すとその時刻へ戻る" title="押すと、その時刻へ戻って止まる" style="cursor:pointer"></canvas>
+      <canvas id="trendz" width="480" height="176" aria-label="実際の 60 Hz の波形の拡大（事故の瞬間と遮断の瞬間）" hidden></canvas></div>
   </aside>
 </div>
 
@@ -576,6 +577,53 @@ const H = {
     if(label) this.text(c,x,y-9,label,{al:'left',font:`600 11px ${SANS}`,col:C.muted}); if(val) this.text(c,x+w,y-9,val,{al:'right',font:`700 12px ${MONO}`}); },
 };
 
+/* ===== 実際の 60 Hz の波形（拡大, 480×176）。OCR・OCGR の、事故の瞬間と遮断の瞬間 =====
+   上のオシログラフは 2.5 Hz に落とした概念図なので、ここでは実時間で描く。
+   短絡電流（OCR）は交流分と直流分の和。直流分は事故の瞬間に電流を連続にする分で、X/R = 10 なら τ = 27 ms で減る。
+   地絡電流（OCGR、非接地）は静電容量の電流なので直流分はなく、地絡した瞬間に充電の過渡（高い周波数）が重なる（模式）。
+   遮断器は接点が開いても、電流が 0 になる点まではアークで流れ続ける（ここでは最小アーク時間 1 ms を過ぎた最初の電流零点で消弧。実際は遮断器と電流で変わり、再発弧もある） */
+const ZOM=TAU*60, ZXR=10, ZTAU=ZXR/ZOM, ZPHI=Math.atan(ZXR), ZTHL=Math.acos(0.9);
+/* u は事故からの時刻 [s]。値は OCR なら整定値の倍数、OCGR なら A の瞬時値。dc は直流分だけ */
+function zWave(id, P, u, dc){ const a=(P.alpha||0)*Math.PI/180, r2=Math.SQRT2;
+  if(id==='ocr'){ const IL=0.6, IF=P.mult; if(u<0) return dc?0:r2*IL*Math.sin(ZOM*u+a-ZTHL);
+    const d=(r2*IL*Math.sin(a-ZTHL) - r2*IF*Math.sin(a-ZPHI))*Math.exp(-u/ZTAU); return dc ? d : r2*IF*Math.sin(ZOM*u+a-ZPHI)+d; }
+  const I0 = P.scen==='in' ? 4.0 : 1.3*P.len; if(u<0 || dc) return 0;
+  return r2*I0*Math.cos(ZOM*u+a) + 3*r2*I0*Math.sin(a)*Math.exp(-u/0.0015)*Math.sin(TAU*800*u); }
+function drawZoom(c, S, P){ c.clearRect(0,0,c.W,c.H); const id=R.id, ev=S.marks.find(m=>m.k==='ev'), r2=Math.SQRT2;
+  H.text(c,8,10,'実際の 60 Hz の波形（拡大）',{al:'left',font:`700 11px ${SANS}`});
+  if(!ev){ H.text(c,c.W/2,c.H/2,'事故を起こすと、事故の瞬間と遮断の瞬間を実時間で描く',{col:C.muted,font:`600 11px ${SANS}`}); return; }
+  const tf=ev.t, now=S.t-tf, uo=S.tOpenAbs!=null ? S.tOpenAbs-tf : null;
+  /* 接点が開いたあと、最初に電流が 0 になる点で消弧 */
+  let ui=null; if(uo!=null){ const ua=uo+0.001; let pv=zWave(id,P,ua); for(let u=ua+2e-5; u<uo+0.03; u+=2e-5){   /* 最小アーク時間 1 ms を過ぎてから、遮断できる電流零点 */ const v=zWave(id,P,u); if(v*pv<=0){ ui=u; break; } pv=v; } if(ui==null) ui=uo; }
+  const val=u=> ui!=null && u>=ui ? 0 : zWave(id,P,u);
+  const W1=[-1/60, 5/60], W2 = uo!=null ? [uo-1.5/60, uo+1/60] : null;
+  let mx=0.05; for(let u=W1[0];u<=W1[1];u+=2e-4) mx=Math.max(mx,Math.abs(val(u))); if(W2) for(let u=W2[0];u<=W2[1];u+=2e-4) mx=Math.max(mx,Math.abs(val(u))); mx*=1.08;
+  const AC = id==='ocr' ? r2*P.mult : r2*(P.scen==='in'?4.0:1.3*P.len), unit = id==='ocr' ? '倍' : 'A';
+  [{w:W1, b:{x:46,y:28,w:196,h:96}, t:id==='ocr'?'事故の瞬間（直流分が重なる）':'地絡の瞬間', k:0}, {w:W2, b:{x:270,y:28,w:196,h:96}, t:'遮断（電流が 0 の点で切れる）', k:1}].forEach(pn=>{ const b=pn.b;
+    c.save(); c.fillStyle=C.sunk; c.fillRect(b.x,b.y,b.w,b.h); c.strokeStyle=C.ink; c.lineWidth=1; c.strokeRect(b.x,b.y,b.w,b.h); c.restore();
+    H.text(c,b.x+4,b.y+9,pn.t,{al:'left',col:C.muted,font:`700 10px ${SANS}`});
+    if(!pn.w){ H.text(c,b.x+b.w/2,b.y+b.h/2,S.tripped?'遮断器が開くのを待っている':'遮断器は開いていない',{col:C.muted,font:`600 10px ${SANS}`}); return; }
+    const X=u=>b.x+(u-pn.w[0])/(pn.w[1]-pn.w[0])*b.w, Y=v=>b.y+b.h/2-v/mx*(b.h/2-4);
+    c.save(); c.beginPath(); c.rect(b.x,b.y,b.w,b.h); c.clip();
+    c.strokeStyle=rgba(C.muted,0.5); c.lineWidth=1; c.beginPath(); c.moveTo(b.x,Y(0)); c.lineTo(b.x+b.w,Y(0)); c.stroke();
+    c.setLineDash([3,3]); c.strokeStyle=rgba(C.s1,0.45); [AC,-AC].forEach(v=>{ c.beginPath(); c.moveTo(X(Math.max(0,pn.w[0])),Y(v)); c.lineTo(b.x+b.w,Y(v)); c.stroke(); }); c.setLineDash([]);
+    if(now<pn.w[0]){ c.restore(); H.text(c,b.x+b.w/2,b.y+b.h/2+12,'（まだ）',{col:C.muted,font:`600 10px ${SANS}`}); return; }
+    const ue=Math.min(pn.w[1],now), du=(pn.w[1]-pn.w[0])/500;
+    if(id==='ocr' && pn.k===0){ c.strokeStyle=C.amber; c.setLineDash([5,3]); c.lineWidth=1.4; c.beginPath(); let f=true; for(let u=0;u<=ue;u+=du){ const y=Y(zWave(id,P,u,true)); f?c.moveTo(X(u),y):c.lineTo(X(u),y); f=false; } c.stroke(); c.setLineDash([]); }
+    c.strokeStyle=C.s1; c.lineWidth=1.7; c.beginPath(); let f=true; for(let u=pn.w[0];u<=ue;u+=du){ const y=Y(val(u)); f?c.moveTo(X(u),y):c.lineTo(X(u),y); f=false; } c.stroke();
+    const mk=(u,lab,col,dash,dy)=>{ if(u<pn.w[0]||u>pn.w[1]||u>now) return; c.strokeStyle=col; c.lineWidth=1.2; c.setLineDash(dash); c.beginPath(); c.moveTo(X(u),b.y+14); c.lineTo(X(u),b.y+b.h); c.stroke(); c.setLineDash([]); c.fillStyle=col; c.font=`700 9.5px ${SANS}`; c.textAlign=X(u)>b.x+b.w-40?'right':'left'; c.textBaseline='top'; c.fillText(lab,X(u)+(c.textAlign==='right'?-3:3),b.y+b.h-12-dy); };
+    if(pn.k===0) mk(0,'事故',C.fault,[2,3],0);
+    else { mk(uo,'接点が開く',C.amber,[4,3],12); if(ui!=null) mk(ui,'消弧',C.target,[],0); }
+    c.restore();
+    /* 1 サイクルの目盛り */
+    const x0=b.x+4, x1=x0+(b.w)/((pn.w[1]-pn.w[0])*60); c.strokeStyle=C.muted; c.lineWidth=1; c.beginPath(); c.moveTo(x0,b.y+b.h+6); c.lineTo(x1,b.y+b.h+6); c.moveTo(x0,b.y+b.h+3); c.lineTo(x0,b.y+b.h+9); c.moveTo(x1,b.y+b.h+3); c.lineTo(x1,b.y+b.h+9); c.stroke();
+    H.text(c,x1+4,b.y+b.h+6,'1 サイクル 16.7 ms',{al:'left',col:C.muted,font:`500 9.5px ${MONO}`}); });
+  H.text(c,42,34,`±${(mx/1.08).toFixed(1)}`,{al:'right',col:C.muted,font:`500 9px ${MONO}`}); H.text(c,42,46,unit,{al:'right',col:C.muted,font:`500 9px ${MONO}`});
+  let l1, l2='';
+  if(id==='ocr'){ let pk=0; for(let u=0;u<=1/60;u+=1e-5) pk=Math.max(pk,Math.abs(zWave(id,P,u))); l1=`電圧の位相 ${P.alpha}° で事故。X/R 10、直流分は τ 27 ms で減る。最初の山は交流分の ${(pk/AC).toFixed(2)} 倍`; }
+  else l1=`静電容量の電流なので直流分はない。地絡の瞬間の充電の過渡は模式（実際は数百 Hz〜数 kHz）`;
+  if(uo!=null && ui!=null && now>=ui) l2=`接点が開いて ${((ui-uo)*1000).toFixed(1)} ms 後、遮断できる電流零点で消弧（上の図は開いた瞬間に 0）`;
+  H.text(c,8,c.H-22,l1,{al:'left',col:C.muted,font:`600 9.5px ${SANS}`}); if(l2) H.text(c,8,c.H-8,l2,{al:'left',col:C.muted,font:`600 9.5px ${SANS}`}); }
 /* ===== 事故記録（オシログラフ, 480×240）。直近 4 秒（シミュレーション時間） ===== */
 const TW = 4, FW = 2.5;   /* 波形は見やすいよう 2.5 Hz に落として描く */
 function drawTrend(c, S, cfg){
@@ -631,6 +679,7 @@ RELAYS.push({
     {id:'curve', label:'限時特性（JIS C 4602）', type:'select', options:[['NI','反限時 NI'],['VI','強反限時 VI'],['EI','超反限時 EI']], value:'NI'},
     {id:'lever', label:'時限レバー', min:1, max:10, step:0.5, value:3, fmt:v=>v.toFixed(1)},
     {id:'inst', label:'瞬時要素の整定', min:6, max:20, step:1, value:12, fmt:v=>v+' 倍'},
+    {id:'alpha', label:'事故の瞬間の電圧の位相（下の拡大図の直流分）', min:0, max:180, step:15, value:0, fmt:v=>v+'°'},
   ],
   desc:`<p>一定値以上の電流が流れたときに動作する。電流が大きいほど早く動く<b>反限時</b>の時限要素で過電流を、大電流で即座に動く<b>瞬時要素</b>で短絡電流を検出する。</p>
         <p class="key">右の図の縦線を上る点が「経過時間」。反限時曲線にぶつかった瞬間にトリップする。事故電流を増やすと曲線が低くなり、瞬時要素の整定を超えると一気に 0.04 秒で動く。</p>`,
@@ -685,6 +734,7 @@ RELAYS.push({
     {id:'scen', label:'事故の場所', type:'select', options:[['in','自構内のケーブルで地絡'],['out','他の需要家で地絡（もらい事故）']], value:'in', reset:true},
     {id:'len', label:'構内ケーブルのこう長', min:0.05, max:1, step:0.05, value:0.1, fmt:v=>v.toFixed(2)+' km'},
     {id:'set', label:'零相電流の整定値', min:0.1, max:0.6, step:0.05, value:0.2, fmt:v=>v.toFixed(2)+' A'},
+    {id:'alpha', label:'地絡した瞬間の電圧の位相（下の拡大図）', min:0, max:180, step:15, value:90, fmt:v=>v+'°'},
   ],
   desc:`<p>一定値以上の地絡電流が流れたときに動作する。零相変流器（ZCT）は 3 相の電線をまとめて通し、3 相電流の和（残留電流 = 3I0、つまり地絡電流）を測る。平常時は 3 相が打ち消し合ってほぼ 0 になる。整定値（例 0.2 A）は一次側に換算した値で、現場ではこの量を「零相電流 I0」と呼ぶことが多い。</p>
         <p class="key">ケーブルのこう長が長く対地静電容量が大きい電路では、よその地絡でも自分のケーブルの充電電流が ZCT を通る（6.6 kV・60 Hz・1 相 0.30 μF/km・完全地絡で約 1.3 A/km の目安）。「他の需要家で地絡」にしてこう長を伸ばすと、整定値を超えて不要動作する。こういう電路には地絡方向継電器（DGR）が向いている。</p>`,
@@ -746,21 +796,23 @@ RELAYS.push({
     {id:'delay', label:'動作時間（定限時）', min:0.3, max:3, step:0.1, value:1.0, fmt:v=>v.toFixed(1)+' s'},
   ],
   desc:`<p>予定値を超える電圧が回路に加わったときに動作する。発電機の故障（自動電圧調整器の暴走など）による過電圧から機器を守る。電圧に厳しい需要家では買電回路に使うこともある。</p>
+        <p>ここでは、受電遮断器 52R が開いていて（系統の停電中など）、自家発だけで構内に給電しているときに AVR が暴走した場面を見る。系統につながっていれば、系統が電圧を保つので、AVR が暴走しても母線の電圧はほとんど上がらない（発電機が無効電力を系統へ押し出すだけ）。</p>
         <p class="key">右の波形は母線の 3 相電圧。振幅が整定ラインを超えた状態が動作時間だけ続くと、発電機の遮断器を開く。短時間だけの上昇なら動かない。</p>`,
   meta:[['器具番号','59 <small>交流過電圧継電器</small>'],['入力','VT 二次電圧'],['整定の例','110〜120 %・定限時'],['用途','発電機保護、買電回路']],
   chartTitle:'母線の 3 相電圧', chartSub:'流れる波形（振幅 = 電圧の大きさ）',
-  trend:P=>({min:80,max:150,unit:'%',th:[{v:P.set,label:'整定値'}],series:[{label:'V',col:'s1'}],ticks:[80,100,120,140],tf:v=>v+'%'}),
-  measure(S,P){ const V=sm(S,'V', (S.ev&&!S.open)?P.rise:100, 0.25), pick=V>=P.set;
+  trend:P=>({min:0,max:150,unit:'%',th:[{v:P.set,label:'整定値'}],series:[{label:'V',col:'s1'}],ticks:[0,50,100,150],tf:v=>v+'%'}),
+  /* 52G が開くと母線は無電圧になる（52R は開いている） */
+  measure(S,P){ const V=sm(S,'V', S.open?0:(S.ev?P.rise:100), S.open?0.02:0.25), pick=V>=P.set;
     return {v:[V], pick, delay:P.delay, should:P.rise>=P.set, V, detect: pick?`V = ${V.toFixed(0)}% ≥ ${P.set}%`:`V = ${V.toFixed(1)}%`,
       readout:[['母線電圧',V.toFixed(1)+' %'],['整定値',P.set+' %'],['動作時間',P.delay.toFixed(1)+' s']], holdText:'整定値まで上がらないので動かない'}; },
-  tripText:(S)=>`${S.tTrip.toFixed(2)} s で動作し、発電機の遮断器（52G）を開放。母線は系統の電圧に戻る`,
+  tripText:(S)=>`${S.tTrip.toFixed(2)} s で動作し、発電機の遮断器（52G）を開放。構内は停電するが、過電圧が続いて機器の絶縁が傷むのを防いだ`,
   scene(S,P){ const m=S.m, V=m.V, hot=V>=P.set;
-    G.src(60,180); G.line([[77,180],[260,180]]); G.cb(160,180,0,'52R');
-    G.bus(260,90,260,290,true); if(hot){ G.c.save(); G.c.strokeStyle=rgba(C.fault,0.35+0.25*Math.sin(G.t*20)); G.c.lineWidth=14; G.c.beginPath(); G.c.moveTo(260,90); G.c.lineTo(260,290); G.c.stroke(); G.c.restore(); }
+    G.src(60,180); G.line([[77,180],[160,180]]); G.feed([[160,180],[260,180]],false); G.cb(160,180,1,'52R'); G.text(160,212,'52R 開（自家発だけで給電中）',{col:C.muted,font:`600 10px ${SANS}`});
+    G.bus(260,90,260,290,!S.open); if(hot){ G.c.save(); G.c.strokeStyle=rgba(C.fault,0.35+0.25*Math.sin(G.t*20)); G.c.lineWidth=14; G.c.beginPath(); G.c.moveTo(260,90); G.c.lineTo(260,290); G.c.stroke(); G.c.restore(); }
     G.text(240,76,'母線',{col:C.muted,font:`600 11px ${SANS}`});
     G.line([[260,110],[600,110]]); G.gen(620,110,'G', S.open?0.4:1, '発電機'); G.cb(470,110,S.cb,'52G');
-    G.line([[260,270],[600,270],[600,290]]); G.load(600,290,'負荷');
-    G.flow('g',[[603,110],[260,110]], S.open?0:0.9, hot?C.fault:C.live); G.flow('s',[[77,180],[260,180]], S.open?0.9:0.2, C.live); G.flow('l',[[260,270],[600,270],[600,286]],1,C.live);
+    G.feed([[260,270],[600,270],[600,290]],!S.open); G.load(600,290,'負荷',!S.open);
+    G.flow('g',[[603,110],[260,110]], S.open?0:0.9, hot?C.fault:C.live); G.flow('l',[[260,270],[600,270],[600,286]],S.open?0:1,C.live);
     G.vt(260,290,'VT');
     G.sense('s1',[[270,318],[330,318],[330,190],[433,190]], m.pick); G.relay(470,190,'OVR','59',S);
     G.trip([[470,172],[470,124]], S);
@@ -1037,7 +1089,7 @@ RELAYS.push({
     {id:'set', label:'差電流の整定値（定格比）', min:0.2, max:1, step:0.05, value:0.3, fmt:v=>v.toFixed(2)},
   ],
   desc:`<p>保護区間に流れ込む電流と流れ出る電流のベクトル差（差電流）を検出し、一定値以上で動作する（ここでは変流比と位相の補償をした後の電流として描いている）。変電所では変圧器内部故障の保護に使い、母線・発電機・送電線の保護にも使う。</p>
-        <p class="key">正常時と外部事故では I1 = I2 なので、CT 二次電流は上の回路をぐるぐる回るだけで差動コイルには流れない。内部事故では I2 が来ないので差電流がコイルに流れる。外部事故で CT 誤差を 20 % 程度にすると、差電流が出て不要動作する。これを防ぎやすくしたのが比率差動（RDFR）。変圧器では、投入時の励磁突入電流でも差電流が出るので、第 2 調波で抑制する方法を組み合わせる。</p>`,
+        <p class="key">正常時と外部事故では I1 = I2 なので、CT 二次電流は上の回路をぐるぐる回るだけで差動コイルには流れない。内部事故では I2 が来ないので差電流がコイルに流れる（片側から送る場合。両側に電源があると、内部事故では I2 も区間へ流れ込む向きになり、差電流は両方の和になる。だから大きさではなく、極性をそろえたベクトルで比べる）。外部事故で CT 誤差を 20 % 程度にすると、差電流が出て不要動作する。これを防ぎやすくしたのが比率差動（RDFR）。変圧器では、投入時の励磁突入電流でも差電流が出るので、第 2 調波で抑制する方法を組み合わせる。</p>`,
   meta:[['器具番号','87 <small>差動継電器</small>'],['入力','保護区間両端の CT 二次電流'],['整定の例','差電流 0.3 倍・瞬時'],['保護対象','変圧器、母線、発電機、送電線']],
   chartTitle:'流入・流出・差電流', chartSub:'差電流が整定値を超えると動作',
   trend:P=>({min:0,max:9,th:[{v:P.set,label:'整定値'}],series:[{label:'I1',col:'s1'},{label:'I2',col:'s2',dash:[5,3]},{label:'Id',col:'fault'}],tf:v=>v.toFixed(0)}),
@@ -1167,7 +1219,7 @@ RELAYS.push({
   ],
   desc:`<p>周波数が一定値以上、または一定値以下になると動作する。周波数が上がったときに動く過周波数継電器（OFR）と、下がったときに動く不足周波数継電器（UFR）がある。</p>
         <p class="key">発電機が脱落すると発電が足りなくなり、発電機の回転が落ちて周波数が下がる。UFR は負荷の一部を切り離して需給を戻す（負荷遮断）。需給のずれを 5 % 程度にすると、周波数は整定値まで下がらず動かない。ここでは北陸と同じ 60 Hz 系統で描いている。</p>`,
-  meta:[['器具番号','95 <small>95L = UFR（低）、95H = OFR（高）</small>'],['入力','VT 電圧の周波数'],['計算の前提','H = 4 s・D = 1・調速機の実効速度調定率 25 %・時定数 1.5 s（余力の少ない系統の例）'],['整定の例','UFR 59.0 Hz・OFR 61.0 Hz・0.3 s'],['出力','UFR：負荷遮断 / OFR：発電機の解列']],
+  meta:[['器具番号','95 <small>95L = UFR（低）、95H = OFR（高）</small>'],['入力','VT 電圧の周波数'],['計算の前提','系統を 1 台にまとめ、周波数のずれは pu（2H dΔf/dt = ΔPm − ΔPe − DΔf）。H = 4 s・D = 1。調速機は利得 1/R = 4・時定数 1.5 s。系統全体の周波数特性は 1/R + D = 5 pu（約 8 %MW/Hz）。発電機ごとの速度調定率は 4〜5 % だが、余力のない発電機も多いので、系統全体で見た実効値にした（余力の少ない系統の例）'],['整定の例','UFR 59.0 Hz・OFR 61.0 Hz・0.3 s'],['出力','UFR：負荷遮断 / OFR：発電機の解列']],
   chartTitle:'振動片形周波数計', chartSub:'いまの周波数に近い片ほど大きく震える',
   trend:P=>({min:57.5,max:62.5,th:P.mode==='uf'?[{v:60-P.set,label:'UFR 整定値'}]:[{v:60+P.set,label:'OFR 整定値'}],series:[{label:'f',col:'s1'}],ticks:[58,59,60,61,62],tf:v=>v+'Hz'}),
   measure(S,P){ const uf=P.mode==='uf';
@@ -1300,11 +1352,11 @@ ocgr:{
 ovr:{
   presets:[{l:'AVR 故障で 125 %',p:{rise:125},k:'ok'},{l:'一時的な上昇 112 %',p:{rise:112},k:'hold'}],
   notes(ph,S,P,m){ return ({
-    normal:[260,180,'VT で母線電圧を見ている。いまは定格の 100 %'],
+    normal:[260,180,'52R は開いていて、自家発だけで構内に給電している。VT で母線電圧を見ている（定格の 100 %）'],
     fault:[620,110,'発電機の自動電圧調整器（AVR）が暴走し、電圧が上がり始めた'],
     pick:[470,190,`V = ${m.V.toFixed(0)} % が整定値 ${P.set} % を超えた。${P.delay.toFixed(1)} s 続けば動作`],
     trip:[470,150,'動作。発電機の遮断器 52G を引き外す'],
-    open:[470,110,'発電機を切り離した。母線は系統の電圧（100 %）に戻る'],
+    open:[470,110,'発電機を切り離した。構内は停電するが、過電圧で機器を壊すよりよい'],
     hold:[470,190,m.holdText]})[ph]; },
   logic(S,P,m){ return {...one(S,m.V>=P.set,'V ≥ 整定値',`${m.V.toFixed(0)} %`,'定限時',`${P.delay.toFixed(2)} s`), out:'トリップ', cb:'52G 開'}; },
 },
@@ -1452,7 +1504,7 @@ const COMBO = {'27':['交流不足電圧継電器','uvr'],'44':['距離継電器
 
 /* ===== エンジン ===== */
 const $ = id=>document.getElementById(id);
-const sceneC=setup($('scene'),720,360), chartC=setup($('chart'),480,400), trendC=setup($('trend'),480,240); G.c=sceneC;
+const sceneC=setup($('scene'),720,360), chartC=setup($('chart'),480,400), trendC=setup($('trend'),480,240), trendzC=setup($('trendz'),480,176); G.c=sceneC;
 const DT=0.005, BEAT=1.4, BEATS=new Set(['fault','pick','open','misop','hold']);
 const PALL={}; RELAYS.forEach(r=>{ PALL[r.id]={}; r.params.forEach(p=>PALL[r.id][p.id]=p.value); });
 const DEF=JSON.parse(JSON.stringify(PALL));   /* シナリオは既定値から組み立てる（前に動かした整定を持ち越さない） */
@@ -1478,7 +1530,7 @@ function step(dt){
     if(S.progs[gi]>=1){ S.prog=1; S.tripped=true; S.pick=false; S.tripEl=gi; S.tTrip=S.te; S.shouldAtTrip=purpose()!=='notrip'; S.mAtTrip=m; S.marks.push({t:S.t,k:'trip'}); done.add(R.id); sfx('click'); evAdd('trip','動作（トリップ指令）'); }
     else if(S.ev && S.pick && !S.wasPick) evAdd('pick','検出（タイマ開始）'); else if(S.ev && !S.pick && S.wasPick) evAdd('reset','復帰');
     S.wasPick=S.pick;
-  } else { const was=S.open; S.tripAnim=Math.min(1,S.tripAnim+dt/0.08); if(S.tripAnim>=1) S.cb=Math.min(1,S.cb+dt/0.06); S.flag=Math.min(1,S.flag+dt/0.15); S.open=S.cb>=1; if(S.open&&!was){ sfx('cb'); evAdd('cb','遮断器が開いた'); } }
+  } else { const was=S.open; S.tripAnim=Math.min(1,S.tripAnim+dt/0.08); if(S.tripAnim>=1) S.cb=Math.min(1,S.cb+dt/0.06); S.flag=Math.min(1,S.flag+dt/0.15); S.open=S.cb>=1; if(S.open&&!was){ S.tOpenAbs=S.t; sfx('cb'); evAdd('cb','遮断器が開いた'); } }
   S.hist.push({t:S.t,v:m.v,p:S.pick?1:0,tr:S.tripped?1:0,o:S.open?1:0}); while(S.hist.length && S.hist[0].t<S.t-TW-0.5) S.hist.shift();
   if(S.ev) maxTe=Math.max(maxTe,S.te);
 }
@@ -1605,7 +1657,7 @@ function updateDOM(){
   const sc=$('scrub'); sc.max=Math.max(2,maxTe).toFixed(3); if(document.activeElement!==sc) sc.value=S.ev?S.te:0;
   $('scrubo').textContent = S.ev ? `事故から ${S.te.toFixed(3)} s` : '事故前'; paintEvents();
   const pb=$('play'); const ps=paused||hold>0; pb.textContent=ps?'▶':'❚❚'; pb.setAttribute('aria-pressed',paused);
-  $('tsub').textContent = '概念波形（実際は 60 Hz）';
+  $('tsub').textContent = R.trend(P).wave ? '大きさと時刻は計算どおり。波は 2.5 Hz に落とした概念図（実際の 60 Hz は下の拡大図）' : '実効値などの推移（大きさと時刻は計算どおり）';
   updateLogic();
 }
 
@@ -1660,7 +1712,8 @@ function loop(now){ const rd=Math.min(0.05,Math.max(0,(now-last)/1000)); last=no
   /* 画面が狭く結線図が横スクロールになるときは、解説の指し先を追いかける（指で触ったら 4 秒は追わない） */
   const wrap=$('scene').parentElement; if(cam && wrap.scrollWidth>wrap.clientWidth+4 && performance.now()>userScroll){ const tx=cam.x/720*$('scene').clientWidth-wrap.clientWidth/2; wrap.scrollLeft+= (tx-wrap.scrollLeft)*(1-Math.exp(-rd*5)); }
   chartC.clearRect(0,0,480,400); R.chart(chartC, (atTrip() && R.chartAtTrip) ? {...S, m:S.mAtTrip} : S, P);
-  drawTrend(trendC,S,R.trend(P));
+  const tcfg=R.trend(P); drawTrend(trendC,S,tcfg);
+  const zw=!!tcfg.wave, zc=$('trendz'); if(zc.hidden===zw) zc.hidden=!zw; if(zw) drawZoom(trendzC,S,P);
   if(autoFire!=null){ autoFire-=rd; if(autoFire<=0){ autoFire=null; if(!S.ev) fire(); } }
   tourTick(rd);
   if(++frame%3===0) updateDOM();
@@ -1692,14 +1745,14 @@ ocgr:{one:{see:'零相電流の大きさ', judge:'3I0 ≥ 0.2 A が 0.2 s', aim:
     eq:['3'+xv('I')+'<sub>0</sub> = '+xv('I')+'<sub>a</sub> + '+xv('I')+'<sub>b</sub> + '+xv('I')+'<sub>c</sub>','3'+xv('I')+'<sub>0</sub> ≥ 0.2 A が 0.2 s 続けば動作']},
   after:{t:'PAS や受電遮断器が開くと、地絡電流は止まる。配電線のほかの需要家は停電しない。構内は、電気主任技術者が原因を見つけて直すまで停電する。',
     tl:[['地絡',0,'ev'],['OCGR 動作 0.2 s',0.2,'relay'],['遮断器が開く 0.25 s',0.25,'cb'],['原因を直して送電 数十分〜数時間',1.5*3600,'rest']]}},
-ovr:{one:{see:'電圧の大きさ', judge:'V ≥ 115 % が 1.0 s', aim:'過電圧から絶縁を守る', back:'母線は系統の電圧にすぐ戻る'},
+ovr:{one:{see:'電圧の大きさ', judge:'V ≥ 115 % が 1.0 s', aim:'過電圧から絶縁を守る', back:'構内は停電（AVR を直して立ち上げ直す）'},
   aim:['発電機の自動電圧調整器（AVR）の故障などで電圧が上がりすぎたとき、発電機を切り離して機器の絶縁を守る','短い電圧上昇では動かず、続いたときだけ切る'],
   phys:{t:'発電機の端子電圧は、界磁電流でつくる内部起電力から、内部リアクタンスでの電圧降下を引いたもの。AVR が暴走して界磁電流が増えると、電圧は界磁回路の時定数で上がっていく。変圧器は電圧が上がると鉄心が飽和し、励磁電流が急に増える。',
     eq:[xv('V')+' ≈ '+xv('E')+' − j'+xv('XI')+'　（'+xv('E')+'：界磁で決まる内部起電力）']},
   judge:{t:'VT で電圧を測り、整定値（ここでは 115 %）を超えた状態が動作時間（1.0 s）続けば動く。',
     eq:[xv('V')+' ≥ '+xv('V')+'<sub>set</sub>（115 %）が 1.0 s 続けば動作']},
-  after:{t:'発電機の遮断器が開くと、母線は系統の電圧（100 %）に数サイクルで戻る。発電機は AVR を直してから並列し直す。',
-    tl:[['電圧が上がり始める',0,'ev'],['OVR 動作 約 1.2 s',1.225,'relay'],['発電機を切り離す',1.28,'cb'],['AVR を直して再並列 数時間',4*3600,'rest']]}},
+  after:{t:'発電機の遮断器が開くと、構内は停電する。系統につながっていれば系統が電圧を保つので、AVR が暴走しても母線の電圧はほとんど上がらない。過電圧が問題になるのは、ここのように自家発だけで給電しているときや、負荷を急に外したとき。AVR を直してから立ち上げ直す（系統が戻っていれば 52R を入れて受電に戻す）。',
+    tl:[['電圧が上がり始める',0,'ev'],['OVR 動作 約 1.2 s',1.225,'relay'],['発電機を切り離す',1.28,'cb'],['AVR を直して立ち上げ直す 数時間',4*3600,'rest']]}},
 ovgr:{one:{see:'零相電圧の大きさ', judge:'V0 ≥ 10 % が 0.5 s', aim:'地絡の発生を確実に見つける', back:'健全フィーダも止まる（選択性なし）'},
   aim:['地絡が起きたことを、零相電圧で確実に見つける（どのフィーダかは分からない）','DGR と組んで事故フィーダだけを切る。分散型電源では、系統側の地絡で発電設備を切り離す（事故点へ電気を送り続けない）'],
   phys:{t:'非接地系で 1 線が地絡すると、大地の電位が地絡相の電圧まで動き、3 相の対地電圧のつり合いが崩れる。この崩れが零相電圧。完全地絡なら相電圧と同じ大きさになり、地絡抵抗があると小さくなり、位相も回る。',
