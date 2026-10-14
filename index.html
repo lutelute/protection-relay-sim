@@ -281,7 +281,7 @@ footer{font-size:12px;color:var(--muted)}
 .tlbar .tlh{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;font-size:13px}
 .tlbar .tlh b{font-family:var(--f-display);font-size:14px}
 .tlbar .tlt{font-weight:700;font-size:14px}
-.tlbar .tlev{color:var(--muted);font-size:12.5px;min-width:0;flex:1 1 320px;line-height:1.5}
+.tlbar .tlev{color:var(--ink);font-size:13px;line-height:1.5;border-top:1px dashed var(--rule);padding-top:5px;margin-top:2px;min-height:2.6em}
 .tlbar .tltrack{position:relative;padding-top:15px}
 .tlbar .tlticks{position:absolute;left:8px;right:8px;top:0;height:15px}
 .tlbar .tlticks i{position:absolute;top:0;width:10px;height:15px;margin-left:-5px;cursor:pointer}
@@ -385,9 +385,6 @@ footer{font-size:12px;color:var(--muted)}
     <section class="stage">
       <div class="stage-head"><h2>工場の高圧受電設備</h2><span class="tag">6.6 kV・基準 10 MVA の %Z で事故電流を計算</span></div>
       <div class="scenewrap"><canvas id="sld" width="880" height="580" aria-label="高圧受電設備の単線結線図。丸をクリックすると、その場所で事故が起きる"></canvas></div>
-      <div class="verdict" id="sverdict"></div>
-      <div class="exp" id="sexp" aria-live="polite"></div>
-      <div class="exp rback" id="sback"></div>
       <div class="controls">
         <button class="fire" id="sfire">事故を起こす</button>
         <div class="transport"><button class="tbtn" id="splay" title="一時停止／再生（Space）">❚❚</button><button class="ghost" id="sreset" title="復帰（R）">復帰</button></div>
@@ -395,6 +392,9 @@ footer{font-size:12px;color:var(--muted)}
         <div class="seg" id="sspeed" role="group" aria-label="再生速度"><button data-v="1" aria-pressed="false">×1</button><button data-v="0.5" aria-pressed="false">×0.5</button><button data-v="0.2" aria-pressed="true">×0.2</button></div>
       </div>
       <div class="tlbar" id="stl"></div>
+      <div class="verdict" id="sverdict"></div>
+      <div class="exp" id="sexp" aria-live="polite"></div>
+      <div class="exp rback" id="sback"></div>
       <div class="logicwrap"><div class="sublabel">シナリオ</div><div class="presets" id="spresets"></div><p class="snote" id="snote">図の丸（事故点の候補）をクリックするか、シナリオを選ぶ。</p></div>
       <div class="params" id="sparams"></div>
     </section>
@@ -1987,7 +1987,9 @@ function sStep(dt){
   S_.hist.push({t:S_.t, te:S_.te, I:{rocr:D.rocr.I, socr:D.socr.I, mccb:D.mccb.I}});
   if(S_.hist.length>1200) S_.hist.shift();
   /* 再閉路を待つあいだ、何も変わらなければ早送りする（待ち時間は実時間のまま） */
-  if(S_.ev && S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && !SROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped) && !Object.values(S_.opening).some(Boolean) && !(so.locked && !S_.open.PAS) && !S_.pasHold){
+  const ffOk = S_.ev && S_.open['52S'] && S_.rc.tOpen!=null && S_.rc.count===0 && !SROWS.some(rw=>D[rw.id].pick&&!D[rw.id].tripped) && !Object.values(S_.opening).some(Boolean) && !(so.locked && !S_.open.PAS) && !S_.pasHold, ffGo = ffOk && S_.calm1;
+  S_.calm1 = ffOk;   /* 静かな状態が 1 コマ続いてから早送りする（遮断器が開いた瞬間でも止められるように） */
+  if(ffGo){
     const tn=S_.rc.tOpen+RECLOSE-dt; if(tn>S_.t+0.05){ const j=tn-S_.t; S_.t+=j; S_.te+=j; sLog(`（何も変わらないので ${j.toFixed(1)} s 早送り）`,'reset',null); } }
 }
 function cbName(cb){ return {MCCB1:'MCCB1','52R':'受電 VCB 52R','52S':'変電所の遮断器','PAS':'PAS','52G':'自家発の遮断器 52G','52T':'52T'}[cb]||cb; }
@@ -2065,9 +2067,10 @@ function tlBind(el, jump){ el.addEventListener('click',e=>{ const li=e.target.cl
    何も起きていない時間（再閉路を待つあいだなど）は、スライダの上で縮めて見せる */
 const SK_SNAP=40, SK_MAX=20000;
 function seekMake(o){ const el=$(o.id);
-  el.innerHTML=`<div class="tlh"><b>時刻</b><span class="tlt mono"></span><span class="tlev"></span></div>
+  el.innerHTML=`<div class="tlh"><b>時刻</b><span class="tlt mono"></span></div>
     <div class="tltrack"><div class="tlticks"></div><input type="range" min="0" max="1000" step="1" value="0" aria-label="事故からの時刻（← → で 5 ms ずつ）"><div class="tlax"><span>0 s</span><span class="tla1"></span></div></div>
-    <div class="tlb"><button class="tbtn" data-d="p" title="前の出来事へ（PageUp）">◀◀</button><button class="tbtn" data-d="-10" title="50 ms 戻す（Shift + ←）">−50 ms</button><button class="tbtn" data-d="-1" title="5 ms 戻す（←）">−5 ms</button><button class="tbtn" data-d="1" title="5 ms 進める（→）">+5 ms</button><button class="tbtn" data-d="10" title="50 ms 進める（Shift + →）">+50 ms</button><button class="tbtn" data-d="n" title="次の出来事へ（PageDown）">▶▶</button><span class="tlnote">縦の線は経過の出来事（押すとその時刻へ）。動きのない時間は縮めて表示</span></div>`;
+    <div class="tlb"><button class="tbtn" data-d="p" title="前の出来事へ（PageUp）">◀◀</button><button class="tbtn" data-d="-10" title="50 ms 戻す（Shift + ←）">−50 ms</button><button class="tbtn" data-d="-1" title="5 ms 戻す（←）">−5 ms</button><button class="tbtn" data-d="1" title="5 ms 進める（→）">+5 ms</button><button class="tbtn" data-d="10" title="50 ms 進める（Shift + →）">+50 ms</button><button class="tbtn" data-d="n" title="次の出来事へ（PageDown）">▶▶</button><span class="tlnote">縦の線は経過の出来事（押すとその時刻へ）。動きのない時間は縮めて表示</span></div>
+    <div class="tlev"></div>`;
   const rg=el.querySelector('input'), tk=el.querySelector('.tlticks'), tt=el.querySelector('.tlt'), tv=el.querySelector('.tlev'), S=()=>o.st();
   let T=null, kc='', tc=0, drag=false;
   function build(){ const keep=o.save(), T_={key:o.key(), snaps:{}, te:[0], cum:[0], ev:[], kEnd:1, full:[]};
@@ -3549,9 +3552,6 @@ paintExplain();
     <section class="stage">
       <div class="stage-head"><h2>送電線と配電用変電所</h2><span class="tag">66 kV / 6.6 kV・基準 10 MVA の %Z で事故電流を計算</span></div>
       <div class="scenewrap"><canvas id="wsld" width="880" height="600" aria-label="送電線と配電用変電所の単線結線図。丸をクリックすると、その場所で事故が起きる"></canvas></div>
-      <div class="verdict" id="wverdict"></div>
-      <div class="exp" id="wexp" aria-live="polite"></div>
-      <div class="exp rback" id="wback"></div>
       <div class="controls">
         <button class="fire" id="wfire">事故を起こす</button>
         <div class="transport"><button class="tbtn" id="wplay" title="一時停止／再生（Space）">❚❚</button><button class="ghost" id="wreset" title="復帰（R）">復帰</button></div>
@@ -3559,6 +3559,9 @@ paintExplain();
         <div class="seg" id="wspeed" role="group" aria-label="再生速度"><button data-v="1" aria-pressed="false">×1</button><button data-v="0.5" aria-pressed="false">×0.5</button><button data-v="0.2" aria-pressed="true">×0.2</button></div>
       </div>
       <div class="tlbar" id="wtl"></div>
+      <div class="verdict" id="wverdict"></div>
+      <div class="exp" id="wexp" aria-live="polite"></div>
+      <div class="exp rback" id="wback"></div>
       <div class="logicwrap"><div class="sublabel">シナリオ</div><div class="presets" id="wpresets"></div><p class="snote" id="wnote">図の丸（事故点の候補）をクリックするか、シナリオを選ぶ。</p></div>
       <div class="params" id="wparams"></div>
     </section>
@@ -3826,7 +3829,8 @@ function wStep(dt){ const S_=WS, Q=WQ, D=S_.dev, f=wF(), P=Q.inv==='on'?Q.ppv/10
   /* 再閉路を待つあいだ、何も変わらなければ早送りする（待ち時間は実時間のまま） */
   if(S_.ev){ const nx=[]; Object.values(WRC).forEach(rc=>{ const st=S_.rc[rc.nm]; if(st && st.t!=null && st.n===0) nx.push(st.w!=null ? st.w+WLDC.wait : st.t+WREC); });
     const calm = !busy && !Object.values(S_.opening).some(Boolean) && !(isl && !r.gb && !S_.hzIsl) && !(Q.kind==='inrush' && !S_.closed2);
-    if(nx.length && calm){ const tn=Math.min(...nx)-dt; if(tn>S_.t+0.05){ const j=tn-S_.t; S_.t+=j; S_.te+=j; if(cabs(r.V.N1||Cx(0))>=WLDC.dead) S_.f1Live=S_.t;   /* 早送りのあいだも線路の状態は変わらない */ wLog(`（何も変わらないので ${j.toFixed(1)} s 早送り）`,'reset',null); } } } }
+    const go = nx.length && calm && S_.calm1; S_.calm1 = calm;   /* 静かな状態が 1 コマ続いてから早送りする（遮断器が開いた瞬間でも止められるように） */
+    if(go){ const tn=Math.min(...nx)-dt; if(tn>S_.t+0.05){ const j=tn-S_.t; S_.t+=j; S_.te+=j; if(cabs(r.V.N1||Cx(0))>=WLDC.dead) S_.f1Live=S_.t;   /* 早送りのあいだも線路の状態は変わらない */ wLog(`（何も変わらないので ${j.toFixed(1)} s 早送り）`,'reset',null); } } } }
 function wReset(keep){ WS=wNew(); if(WQ.kind==='inrush'){ WS.open['52T1']=true; WS.open['52T2']=true; } WS.invRun = WQ.inv==='on' && wIsland(WS.open,null,'S').has('E1');
   for(let i=0;i<20;i++) wStep(DT); WS.log=[]; wHold=0; wFocus=null; if(!keep) wFull=[]; }
 function wFire(){ if(WS.ev) wReset(); const Q=WQ, f=wF(); WS.ev=true; WS.te=0; WS.k=0; WS.on=true;
