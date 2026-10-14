@@ -2098,7 +2098,7 @@ function seekMake(o){ const el=$(o.id);
   function show(force){ const s=S(); el.classList.toggle('off', !(s&&s.ev));
     if(!s||!s.ev){ tt.textContent='—'; tv.textContent=o.idle||'事故を起こすと、時刻を動かせる（コマ送りもできる）。'; if(tk._on){ tk.innerHTML=''; tk._on=false; el.querySelector('.tla1').textContent=''; } rg.value='0'; return; }
     tt.textContent=`${o.lab()} ${s.te.toFixed(3)} s`;
-    if(!T || T.key!==o.key()){ tv.textContent='条件を変えたので計算し直している…'; return; }
+    if(!T || T.key!==o.key()){ tv.textContent=T?'条件を変えたので、経過を計算し直している…':'経過を計算している…'; return; }
     if(!tk._on) paint();
     const k=kNow(); if(!drag||force) rg.value=String(Math.round(pos(k)));
     let e=null; T.ev.forEach(x=>{ if(x.k<=k) e=x; }); const nx=T.ev.find(x=>x.k>k);
