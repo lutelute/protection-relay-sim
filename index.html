@@ -1009,7 +1009,7 @@ RELAYS.push({
     if(over){ const bx=cx+(Lr-26)*Math.cos(th+m.phi), by=cy-(Lr-26)*Math.sin(th+m.phi), nx=Math.cos(th+m.phi+Math.PI/2)*7, ny=-Math.sin(th+m.phi+Math.PI/2)*7;
       c.save(); c.strokeStyle=C.surface; c.lineWidth=5; c.beginPath(); c.moveTo(bx-nx,by-ny); c.lineTo(bx+nx,by+ny); c.stroke(); c.restore(); }
     H.text(c,20,24,`電流 ${m.I.toFixed(1)} 倍・位相 ${(m.phi*180/Math.PI).toFixed(0)}°（電圧基準）`,{al:'left',font:`700 13px ${SANS}`});
-    H.text(c,20,44, m.I<1?'整定値の円の内側：大きさが足りない': !m.dl?'電圧がほぼ 0：基準がなく、向きを測れない': m.pol==='mem'?'電圧がほぼ 0：メモリ電圧を基準に向きを決めた': (Math.cos(m.phi-DSR_PHI_M)>0?'円の外・網かけの側：動作する':'円の外だが後方：動かない'),{al:'left',font:`600 12px ${SANS}`,col:m.pick?C.fault:(!m.dl&&m.I>=1?C.fault:C.muted)});
+    H.text(c,20,44, m.I<1?'整定値の円の内側：大きさが足りない': !m.dl?'電圧がほぼ 0：基準がなく、向きを測れない': m.pol==='mem'?'電圧がほぼ 0：メモリ電圧を基準に向きを決めた': (!m.pol && m.I>=1)?'メモリ電圧で決めた向き（前方）を保持して動作': (Math.cos(m.phi-DSR_PHI_M)>0?'円の外・網かけの側：動作する':'円の外だが後方：動かない'),{al:'left',font:`600 12px ${SANS}`,col:m.pick?C.fault:(!m.dl&&m.I>=1?C.fault:C.muted)});
     H.text(c,20,364, OPT.rot?'ベクトルは 60 Hz で一緒に回る。角度の差は変わらない':'基準の V を横向きに止めて描いている（実際は全部が 60 Hz で一緒に回る）',{al:'left',col:C.muted,font:`600 11px ${SANS}`});
     H.text(c,20,382,`長さは整定値に比例${over?'（I は途中を省略）':''}。一点鎖線が最大感度角（60° 遅れ）`,{al:'left',col:C.muted,font:`600 11px ${SANS}`});
   },
@@ -1180,7 +1180,7 @@ RELAYS.push({
   zoom(c,S,P){ diffZoom(c,S,P,P.loc==='in'?6:8,false); },
   tripText:(S)=>`内部事故を ${S.tTrip.toFixed(2)} s で検出し、両側の遮断器を開放`,
   scene(S,P){ diffScene(S,P,false); },
-  chart(c,S,P){ const m=S.m, mx=9, x0=70, w=360; const rows=[['流入 I1',m.I1,C.s1],['流出 I2',m.I2,C.s2],['差電流 Id = |I1 − I2|',m.Id,m.Id>=P.set?C.fault:C.amber]];
+  chart(c,S,P){ const m=S.m, mx=9, x0=70, w=360; const rows=[['流入 I1',m.I1,C.s1],['流出 I2',m.I2,C.s2],['差電流 Id（I1 と I2 のベクトル差）',m.Id,m.Id>=P.set?C.fault:C.amber]];
     rows.forEach((r,i)=>{ H.bar(c,x0,80+i*80,w,26,r[1]/mx,r[2],r[0],r[1].toFixed(2)); });
     const sx=x0+w*P.set/mx; c.save(); c.strokeStyle=C.target; c.setLineDash([4,3]); c.lineWidth=2; c.beginPath(); c.moveTo(sx,228); c.lineTo(sx,272); c.stroke(); c.restore();
     H.text(c,sx+4,282,'整定値',{al:'left',col:C.target,font:`600 10px ${SANS}`});
